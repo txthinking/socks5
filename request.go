@@ -1,7 +1,17 @@
 package socks5
 
-import "encoding/binary"
+import (
+    "encoding/binary"
+    "strconv"
+    "bytes"
+)
 
 func (r *Request) Address() string {
-	return string(r.DstAddr) + ":" + string(binary.BigEndian.Uint16(r.DstPort))
+    var addr []byte
+    if r.Atyp == ATYP_DOMAIN {
+        addr = r.DstAddr[1:]
+    }else{
+        addr = r.DstAddr
+    }
+    return bytes.NewBuffer(addr).String() + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(r.DstPort)))
 }

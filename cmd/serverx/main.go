@@ -4,7 +4,7 @@ import (
     "log"
     "net"
     //"time"
-    "github.com/txthinking/socks5"
+    "io"
     "net/http"
     _ "net/http/pprof"
 )
@@ -34,11 +34,27 @@ func main() {
             //}
             //continue
         //}
-        s := socks5.NewServer(c)
         go func (){
-            if err := s.Handle(); err != nil {
+            rc, err := net.Dial("tcp", "g.txthinking.com:20010")
+            if err != nil {
                 log.Println(err)
+                return
             }
+            defer func() {
+                if err := rc.Close(); err != nil {
+                    log.Println(err)
+                }
+            }()
+
+            go func(){
+                if _, err := io.Copy(c, rc); err != nil {
+                    log.Println("copy: rc->c", err)
+                }
+            }()
+            if _, err := io.Copy(rc, c); err != nil {
+                log.Println("copy: c->rc", err)
+            }
+
         }()
     }
 }
