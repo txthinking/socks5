@@ -3,16 +3,28 @@ package main
 import (
     "log"
     "net"
+    "crypto/tls"
     //"time"
     "io"
-    "net/http"
-    _ "net/http/pprof"
 )
 
 func main() {
-    go func (){
-        log.Println(http.ListenAndServe(":1094", nil))
-    }()
+    cer, err := tls.LoadX509KeyPair(
+        "/home/tx/go/src/github.com/txthinking/socks5/cmd/cert.pem",
+        "/home/tx/go/src/github.com/txthinking/socks5/cmd/key.pem")
+    if err != nil {
+        log.Fatal(err)
+        return
+    }
+    config := &tls.Config{
+        Certificates: []tls.Certificate{cer},
+        InsecureSkipVerify: true,
+        MinVersion: tls.VersionTLS12,
+        CipherSuites: []uint16{
+            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+        },
+    }
+
     l, err := net.Listen("tcp", ":1090")
     if err != nil {
         log.Fatal(err)
@@ -34,8 +46,9 @@ func main() {
             //}
             //continue
         //}
-        go func (){
-            rc, err := net.Dial("tcp", "g.txthinking.com:20010")
+        log.Println("In", c.RemoteAddr().String())
+        go func (c net.Conn){
+            rc, err := tls.Dial("tcp", "g.txthinking.com:20010", config)
             if err != nil {
                 log.Println(err)
                 return
@@ -55,6 +68,6 @@ func main() {
                 log.Println("copy: c->rc", err)
             }
 
-        }()
+        }(c)
     }
 }

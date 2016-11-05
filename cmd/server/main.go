@@ -2,18 +2,30 @@ package main
 
 import (
     "log"
-    "net"
+    "crypto/tls"
     //"time"
     "github.com/txthinking/socks5"
-    "net/http"
-    _ "net/http/pprof"
 )
 
 func main() {
-    go func (){
-        log.Println(http.ListenAndServe(":1094", nil))
-    }()
-    l, err := net.Listen("tcp", ":1090")
+    cer, err := tls.LoadX509KeyPair(
+        "/home/tx/go/src/github.com/txthinking/socks5/cmd/cert.pem",
+        "/home/tx/go/src/github.com/txthinking/socks5/cmd/key.pem")
+    if err != nil {
+        log.Fatal(err)
+        return
+    }
+    config := &tls.Config{
+        Certificates: []tls.Certificate{cer},
+        InsecureSkipVerify: true,
+        MinVersion: tls.VersionTLS12,
+        CipherSuites: []uint16{
+            tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+        },
+    }
+    l, err := tls.Listen("tcp", ":20010", config)
+
+    //l, err := net.Listen("tcp", ":20010")
     if err != nil {
         log.Fatal(err)
     }
