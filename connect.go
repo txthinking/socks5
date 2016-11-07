@@ -7,7 +7,6 @@ import (
     "io"
     "strconv"
     "encoding/binary"
-    //"time"
 )
 
 func (r *Request) connect(c net.Conn) error {
@@ -26,9 +25,6 @@ func (r *Request) connect(c net.Conn) error {
             log.Println(err)
         }
     }()
-    //if err := rc.SetDeadline(time.Now().Add(60 * time.Second)); err != nil {
-        //return err
-    //}
 
     ss := strings.Split(rc.LocalAddr().String(), ":")
     var a byte
