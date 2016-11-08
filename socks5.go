@@ -4,7 +4,7 @@ const (
 	VER byte = 0x05
 
 	METHOD_NONE              byte = 0x00
-	METHOD_GSSAPI            byte = 0x01 // MUST support
+	METHOD_GSSAPI            byte = 0x01 // MUST support // todo
 	METHOD_USERNAME_PASSWORD byte = 0x02 // SHOULD support
 	METHOD_UNSUPPORT_ALL     byte = 0xFF
 
