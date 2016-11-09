@@ -1,17 +1,18 @@
 package socks5
 
 import (
-    "encoding/binary"
-    "strconv"
-    "bytes"
+	"bytes"
+	"encoding/binary"
+	"net"
+	"strconv"
 )
 
 func (r *Request) Address() string {
-    var addr []byte
-    if r.Atyp == ATYP_DOMAIN {
-        addr = r.DstAddr[1:]
-    }else{
-        addr = r.DstAddr
-    }
-    return bytes.NewBuffer(addr).String() + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(r.DstPort)))
+	var s string
+	if r.Atyp == ATYP_DOMAIN {
+		s = bytes.NewBuffer(r.DstAddr[1:]).String()
+	} else {
+		s = net.IP(r.DstAddr).String()
+	}
+	return s + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(r.DstPort)))
 }
