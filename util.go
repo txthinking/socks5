@@ -23,3 +23,21 @@ func ParseAddress(na net.Addr) (a byte, addr []byte, port []byte) {
 	binary.BigEndian.PutUint16(port, uint16(i))
 	return
 }
+
+func ToAddress(a byte, addr []byte, port []byte) string {
+	var h, p string
+	if a == ATYP_IPV4 || a == ATYP_IPV6 {
+		h = net.IP(addr).String()
+	}
+	if a == ATYP_DOMAIN {
+		if len(addr) < 1 {
+			return ""
+		}
+		if len(addr) < int(addr[0])+1 {
+			return ""
+		}
+		h = string(addr[1:])
+	}
+	p = strconv.Itoa(int(binary.BigEndian.Uint16(port)))
+	return net.JoinHostPort(h, p)
+}
