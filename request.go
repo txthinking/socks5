@@ -14,5 +14,6 @@ func (r *Request) Address() string {
 	} else {
 		s = net.IP(r.DstAddr).String()
 	}
-	return s + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(r.DstPort)))
+	p := strconv.Itoa(int(binary.BigEndian.Uint16(r.DstPort)))
+	return net.JoinHostPort(s, p)
 }
