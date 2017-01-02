@@ -7,18 +7,21 @@ import (
 )
 
 var (
-	ERROR_BAD_REPLY = errors.New("Bad Reply")
+	// ErrBadReply is the error when read reply
+	ErrBadReply = errors.New("Bad Reply")
 )
 
+// NewNegotiationRequest return negotiation request packet can be writed into server
 func NewNegotiationRequest(methods []byte) *NegotiationRequest {
 	return &NegotiationRequest{
-		Ver:      VER,
+		Ver:      Ver,
 		NMethods: byte(len(methods)),
 		Methods:  methods,
 	}
 }
 
-func (r *NegotiationRequest) Write(w io.Writer) error {
+// WriteTo write negotiation request packet into server
+func (r *NegotiationRequest) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver}); err != nil {
 		return err
 	}
@@ -34,13 +37,14 @@ func (r *NegotiationRequest) Write(w io.Writer) error {
 	return nil
 }
 
+// NewNegotiationReplyFrom read negotiation reply packet from server
 func NewNegotiationReplyFrom(r io.Reader) (*NegotiationReply, error) {
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
 	}
-	if bb[0] != VER {
-		return nil, ERROR_VERSION
+	if bb[0] != Ver {
+		return nil, ErrVersion
 	}
 	if Debug {
 		log.Printf("Got NegotiationReply: %#v %#v\n", bb[0], bb[1])
@@ -51,9 +55,10 @@ func NewNegotiationReplyFrom(r io.Reader) (*NegotiationReply, error) {
 	}, nil
 }
 
+// NewUserPassNegotiationRequest return user password negotiation request packet can be writed into server
 func NewUserPassNegotiationRequest(username []byte, password []byte) *UserPassNegotiationRequest {
 	return &UserPassNegotiationRequest{
-		Ver:    USER_PASS_VER,
+		Ver:    UserPassVer,
 		Ulen:   byte(len(username)),
 		Uname:  username,
 		Plen:   byte(len(password)),
@@ -61,6 +66,7 @@ func NewUserPassNegotiationRequest(username []byte, password []byte) *UserPassNe
 	}
 }
 
+// WriteTo write user password negotiation request packet into server
 func (r *UserPassNegotiationRequest) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Ulen}); err != nil {
 		return err
@@ -80,13 +86,14 @@ func (r *UserPassNegotiationRequest) WriteTo(w io.Writer) error {
 	return nil
 }
 
+// NewUserPassNegotiationReplyFrom read user password negotiation reply packet from server
 func NewUserPassNegotiationReplyFrom(r io.Reader) (*UserPassNegotiationReply, error) {
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
 	}
-	if bb[0] != USER_PASS_VER {
-		return nil, ERROR_USER_PASS_VERSION
+	if bb[0] != UserPassVer {
+		return nil, ErrUserPassVersion
 	}
 	if Debug {
 		log.Printf("Got UserPassNegotiationReply: %#v %#v \n", bb[0], bb[1])
@@ -97,12 +104,13 @@ func NewUserPassNegotiationReplyFrom(r io.Reader) (*UserPassNegotiationReply, er
 	}, nil
 }
 
+// NewRequest return request packet can be writed into server
 func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte) *Request {
-	if atyp == ATYP_DOMAIN {
+	if atyp == ATYPDomain {
 		dstaddr = append([]byte{byte(len(dstaddr))}, dstaddr...)
 	}
 	return &Request{
-		Ver:     VER,
+		Ver:     Ver,
 		Cmd:     cmd,
 		Rsv:     0x00,
 		Atyp:    atyp,
@@ -111,11 +119,12 @@ func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte) *Request {
 	}
 }
 
+// WriteTo write request packet into server
 func (r *Request) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Cmd, r.Rsv, r.Atyp}); err != nil {
 		return err
 	}
-	if r.Atyp == ATYP_DOMAIN {
+	if r.Atyp == ATYPDomain {
 		if _, err := w.Write([]byte{byte(len(r.DstAddr))}); err != nil {
 			return err
 		}
@@ -132,32 +141,33 @@ func (r *Request) WriteTo(w io.Writer) error {
 	return nil
 }
 
+// NewReplyFrom read reply packet from server
 func NewReplyFrom(r io.Reader) (*Reply, error) {
 	bb := make([]byte, 4)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
 	}
-	if bb[0] != VER {
-		return nil, ERROR_VERSION
+	if bb[0] != Ver {
+		return nil, ErrVersion
 	}
 	var addr []byte
-	if bb[3] == ATYP_IPV4 {
+	if bb[3] == ATYPIPv4 {
 		addr = make([]byte, 4)
 		if _, err := io.ReadFull(r, addr); err != nil {
 			return nil, err
 		}
-	} else if bb[3] == ATYP_IPV6 {
+	} else if bb[3] == ATYPIPv6 {
 		addr = make([]byte, 16)
 		if _, err := io.ReadFull(r, addr); err != nil {
 			return nil, err
 		}
-	} else if bb[3] == ATYP_DOMAIN {
+	} else if bb[3] == ATYPDomain {
 		dal := make([]byte, 1)
 		if _, err := io.ReadFull(r, dal); err != nil {
 			return nil, err
 		}
 		if dal[0] == 0 {
-			return nil, ERROR_BAD_REPLY
+			return nil, ErrBadReply
 		}
 		addr = make([]byte, int(dal[0]))
 		if _, err := io.ReadFull(r, addr); err != nil {
@@ -165,7 +175,7 @@ func NewReplyFrom(r io.Reader) (*Reply, error) {
 		}
 		addr = append(dal, addr...)
 	} else {
-		return nil, ERROR_BAD_REPLY
+		return nil, ErrBadReply
 	}
 	port := make([]byte, 2)
 	if _, err := io.ReadFull(r, port); err != nil {

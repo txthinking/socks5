@@ -7,15 +7,16 @@ import (
 	"strings"
 )
 
+// ParseAddress format net.Addr to raw address
 func ParseAddress(na net.Addr) (a byte, addr []byte, port []byte) {
 	ss := strings.Split(na.String(), ":")
 	ip := net.ParseIP(ss[0])
 	ip4 := ip.To4()
 	if ip4 != nil {
-		a = ATYP_IPV4
+		a = ATYPIPv4
 		addr = []byte(ip4)
 	} else {
-		a = ATYP_IPV6
+		a = ATYPIPv6
 		addr = []byte(ip)
 	}
 	i, _ := strconv.Atoi(ss[1])
@@ -24,12 +25,13 @@ func ParseAddress(na net.Addr) (a byte, addr []byte, port []byte) {
 	return
 }
 
+// ToAddress format raw address to x.x.x.x:xx
 func ToAddress(a byte, addr []byte, port []byte) string {
 	var h, p string
-	if a == ATYP_IPV4 || a == ATYP_IPV6 {
+	if a == ATYPIPv4 || a == ATYPIPv6 {
 		h = net.IP(addr).String()
 	}
-	if a == ATYP_DOMAIN {
+	if a == ATYPDomain {
 		if len(addr) < 1 {
 			return ""
 		}

@@ -6,17 +6,22 @@ import (
 )
 
 var (
-	ERROR_UNSUPPORT_CMD  = errors.New("Unsupport Command")
-	ERROR_USER_PASS_AUTH = errors.New("Invalid Username or Password for Auth")
+	// ErrUnsupportCmd is the error when got unsupport command
+	ErrUnsupportCmd = errors.New("Unsupport Command")
+	// ErrUserPassAuth is the error when got invalid username or password
+	ErrUserPassAuth = errors.New("Invalid Username or Password for Auth")
 )
 
+// Server is socks5 server wrapper
 type Server struct {
 	C                 net.Conn
 	CheckUserPass     func(user, pass []byte) bool
 	SelectMethod      func(methods []byte) (method byte, got bool)
-	SupportedCommands []byte
+	SupportedCommands []byte // Now only support connect command
 }
 
+// Negotiate handle negotiate packet.
+// This method do not handle gssapi(0x01) method now.
 func (s *Server) Negotiate() error {
 	rq, err := NewNegotiationRequestFrom(s.C)
 	if err != nil {
@@ -24,7 +29,7 @@ func (s *Server) Negotiate() error {
 	}
 	m, got := s.SelectMethod(rq.Methods)
 	if !got {
-		rp := NewNegotiationReply(METHOD_UNSUPPORT_ALL)
+		rp := NewNegotiationReply(MethodUnsupportAll)
 		if err := rp.WriteTo(s.C); err != nil {
 			return err
 		}
@@ -34,19 +39,19 @@ func (s *Server) Negotiate() error {
 		return err
 	}
 
-	if m == METHOD_USERNAME_PASSWORD {
+	if m == MethodUsernamePassword {
 		urq, err := NewUserPassNegotiationRequestFrom(s.C)
 		if err != nil {
 			return err
 		}
 		if !s.CheckUserPass(urq.Uname, urq.Passwd) {
-			urp := NewUserPassNegotiationReply(USER_PASS_STATUS_FAILURE)
+			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
 			if err := urp.WriteTo(s.C); err != nil {
 				return err
 			}
-			return ERROR_USER_PASS_AUTH
+			return ErrUserPassAuth
 		}
-		urp := NewUserPassNegotiationReply(USER_PASS_STATUS_SUCCESS)
+		urp := NewUserPassNegotiationReply(UserPassStatusSuccess)
 		if err := urp.WriteTo(s.C); err != nil {
 			return err
 		}
@@ -54,6 +59,7 @@ func (s *Server) Negotiate() error {
 	return nil
 }
 
+// GetRequest get request packet from client, and check command according to SupportedCommands
 func (s *Server) GetRequest() (*Request, error) {
 	r, err := NewRequestFrom(s.C)
 	if err != nil {
@@ -67,11 +73,11 @@ func (s *Server) GetRequest() (*Request, error) {
 		}
 	}
 	if !supported {
-		p := NewReply(REP_COMMAND_NOT_SUPPORTED, ATYP_IPV4, []byte{0, 0, 0, 0}, []byte{0, 0})
+		p := NewReply(RepCommandNotSupported, ATYPIPv4, []byte{0, 0, 0, 0}, []byte{0, 0})
 		if err := p.WriteTo(s.C); err != nil {
 			return nil, err
 		}
-		return nil, ERROR_UNSUPPORT_CMD
+		return nil, ErrUnsupportCmd
 	}
 	return r, nil
 }

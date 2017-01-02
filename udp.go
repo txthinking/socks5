@@ -1,8 +1,11 @@
 package socks5
 
-import "net"
+import (
+	"errors"
+	"net"
+)
 
-// todo
+// TODO
 func (r *Request) udp(c net.Conn) error {
-	return nil
+	return errors.New("Unsupport UDP now")
 }

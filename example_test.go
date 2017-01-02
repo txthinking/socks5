@@ -1,18 +1,14 @@
-## socks5
+package socks5_test
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/txthinking/socks5)](https://goreportcard.com/report/github.com/txthinking/socks5)
-[![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
+import (
+	"io"
+	"log"
+	"net"
+	"time"
 
-SOCKS Protocol Version 5 Library
+	"github.com/txthinking/socks5"
+)
 
-### Install
-```
-$ go get github.com/txthinking/socks5
-```
-
-### Example
-
-```
 func ExampleSocks5Server() {
 	timeout := 60       // 60s
 	socks5.Debug = true // enable socks5 debug log
@@ -80,4 +76,3 @@ func ExampleSocks5Server() {
 
 	}
 }
-```
