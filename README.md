@@ -83,4 +83,5 @@ func ExampleServer() {
 
 ```
 Now you have a socks5 proxy listen on :1980
+
 You can test with curl: `curl --socks5-hostname YOUR_SERVER_IP:1980 httpbin.org`
