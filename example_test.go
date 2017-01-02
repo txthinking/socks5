@@ -9,7 +9,7 @@ import (
 	"github.com/txthinking/socks5"
 )
 
-func ExampleSocks5Server() {
+func ExampleServer() {
 	timeout := 60       // 60s
 	socks5.Debug = true // enable socks5 debug log
 
