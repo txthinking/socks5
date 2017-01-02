@@ -1,7 +1,7 @@
 package socks5
 
 const (
-	// Ver is socks protocal version
+	// Ver is socks protocol version
 	Ver byte = 0x05
 
 	// MethodNone is none method
@@ -13,7 +13,7 @@ const (
 	// MethodUnsupportAll means unsupport all given methods
 	MethodUnsupportAll byte = 0xFF
 
-	// UserPassVer is username/password auth protocal version
+	// UserPassVer is username/password auth protocol version
 	UserPassVer byte = 0x01
 	// UserPassStatusSuccess is success status of username/password auth
 	UserPassStatusSuccess byte = 0x00
