@@ -14,7 +14,7 @@ $ go get github.com/txthinking/socks5
 
 ```
 func ExampleServer() {
-	timeout := 60       // 60s
+	timeout := 1800       // 1800s
 	socks5.Debug = true // enable socks5 debug log
 
 	l, err := net.Listen("tcp", ":1980")
@@ -84,4 +84,4 @@ func ExampleServer() {
 ```
 Now you have a socks5 proxy listen on :1980
 
-You can test with curl: `curl --socks5-hostname YOUR_SERVER_IP:1980 httpbin.org`
+You can test with curl: `curl --socks5-hostname YOUR_SERVER_IP:1980 http://httpbin.org/ip`
