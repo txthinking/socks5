@@ -2,200 +2,100 @@ package socks5
 
 import (
 	"errors"
-	"io"
-	"log"
+	"net"
 )
 
 var (
-	// ErrVersion is version error
-	ErrVersion = errors.New("Invalid Version")
-	// ErrUserPassVersion is username/password auth version error
-	ErrUserPassVersion = errors.New("Invalid Version of Username Password Auth")
-	// ErrBadRequest is bad request error
-	ErrBadRequest = errors.New("Bad Request")
+	// ErrUnsupportCmd is the error when got unsupport command
+	ErrUnsupportCmd = errors.New("Unsupport Command")
+	// ErrUserPassAuth is the error when got invalid username or password
+	ErrUserPassAuth = errors.New("Invalid Username or Password for Auth")
 )
 
-// NewNegotiationRequestFrom read negotiation requst packet from client
-func NewNegotiationRequestFrom(r io.Reader) (*NegotiationRequest, error) {
-	// memory strict
-	bb := make([]byte, 2)
-	if _, err := io.ReadFull(r, bb); err != nil {
-		return nil, err
-	}
-	if bb[0] != Ver {
-		return nil, ErrVersion
-	}
-	if bb[1] == 0 {
-		return nil, ErrBadRequest
-	}
-	ms := make([]byte, int(bb[1]))
-	if _, err := io.ReadFull(r, ms); err != nil {
-		return nil, err
-	}
-	if Debug {
-		log.Printf("Got NegotiationRequest: %#v %#v %#v\n", bb[0], bb[1], ms)
-	}
-	return &NegotiationRequest{
-		Ver:      bb[0],
-		NMethods: bb[1],
-		Methods:  ms,
-	}, nil
+// Server is socks5 server wrapper
+type Server struct {
+	C                 net.Conn
+	CheckUserPass     func(user, pass []byte) bool
+	SelectMethod      func(methods []byte) (method byte, got bool)
+	SupportedCommands []byte // Now only support connect command
 }
 
-// NewNegotiationReply return negotiation reply packet can be writed into client
-func NewNegotiationReply(method byte) *NegotiationReply {
-	return &NegotiationReply{
-		Ver:    Ver,
-		Method: method,
+// NewClassicServer return a server which allow none method and connect command
+func NewClassicServer(c net.Conn) *Server {
+	return &Server{
+		C: c,
+		SelectMethod: func(methods []byte) (method byte, got bool) {
+			for _, m := range methods {
+				if m == MethodNone {
+					method = MethodNone
+					got = true
+					return
+				}
+			}
+			return
+		},
+		SupportedCommands: []byte{CmdConnect},
 	}
 }
 
-// WriteTo write negotiation reply packet into client
-func (r *NegotiationReply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Method}); err != nil {
+// Negotiate handle negotiate packet.
+// This method do not handle gssapi(0x01) method now.
+func (s *Server) Negotiate() error {
+	rq, err := NewNegotiationRequestFrom(s.C)
+	if err != nil {
 		return err
 	}
-	if Debug {
-		log.Printf("Sent NegotiationReply: %#v %#v\n", r.Ver, r.Method)
+	m, got := s.SelectMethod(rq.Methods)
+	if !got {
+		rp := NewNegotiationReply(MethodUnsupportAll)
+		if err := rp.WriteTo(s.C); err != nil {
+			return err
+		}
+	}
+	rp := NewNegotiationReply(m)
+	if err := rp.WriteTo(s.C); err != nil {
+		return err
+	}
+
+	if m == MethodUsernamePassword {
+		urq, err := NewUserPassNegotiationRequestFrom(s.C)
+		if err != nil {
+			return err
+		}
+		if !s.CheckUserPass(urq.Uname, urq.Passwd) {
+			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
+			if err := urp.WriteTo(s.C); err != nil {
+				return err
+			}
+			return ErrUserPassAuth
+		}
+		urp := NewUserPassNegotiationReply(UserPassStatusSuccess)
+		if err := urp.WriteTo(s.C); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// NewUserPassNegotiationRequestFrom read user password negotiation request packet from client
-func NewUserPassNegotiationRequestFrom(r io.Reader) (*UserPassNegotiationRequest, error) {
-	bb := make([]byte, 2)
-	if _, err := io.ReadFull(r, bb); err != nil {
+// GetRequest get request packet from client, and check command according to SupportedCommands
+func (s *Server) GetRequest() (*Request, error) {
+	r, err := NewRequestFrom(s.C)
+	if err != nil {
 		return nil, err
 	}
-	if bb[0] != UserPassVer {
-		return nil, ErrUserPassVersion
+	var supported bool
+	for _, c := range s.SupportedCommands {
+		if r.Cmd == c {
+			supported = true
+			break
+		}
 	}
-	if bb[1] == 0 {
-		return nil, ErrBadRequest
-	}
-	ub := make([]byte, int(bb[1])+1)
-	if _, err := io.ReadFull(r, ub); err != nil {
-		return nil, err
-	}
-	if ub[int(bb[1])] == 0 {
-		return nil, ErrBadRequest
-	}
-	p := make([]byte, int(ub[int(bb[1])]))
-	if _, err := io.ReadFull(r, p); err != nil {
-		return nil, err
-	}
-	if Debug {
-		log.Printf("Got UserPassNegotiationRequest: %#v %#v %#v %#v %#v\n", bb[0], bb[1], ub[:int(bb[1])], ub[int(bb[1])], p)
-	}
-	return &UserPassNegotiationRequest{
-		Ver:    bb[0],
-		Ulen:   bb[1],
-		Uname:  ub[:int(bb[1])],
-		Plen:   ub[int(bb[1])],
-		Passwd: p,
-	}, nil
-}
-
-// NewUserPassNegotiationReply return negotiation username password reply packet can be writed into client
-func NewUserPassNegotiationReply(status byte) *UserPassNegotiationReply {
-	return &UserPassNegotiationReply{
-		Ver:    UserPassVer,
-		Status: status,
-	}
-}
-
-// WriteTo write negotiation username password reply packet into client
-func (r *UserPassNegotiationReply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Status}); err != nil {
-		return err
-	}
-	if Debug {
-		log.Printf("Sent UserPassNegotiationReply: %#v %#v \n", r.Ver, r.Status)
-	}
-	return nil
-}
-
-// NewRequestFrom read requst packet from client
-func NewRequestFrom(r io.Reader) (*Request, error) {
-	bb := make([]byte, 4)
-	if _, err := io.ReadFull(r, bb); err != nil {
-		return nil, err
-	}
-	if bb[0] != Ver {
-		return nil, ErrVersion
-	}
-	var addr []byte
-	if bb[3] == ATYPIPv4 {
-		addr = make([]byte, 4)
-		if _, err := io.ReadFull(r, addr); err != nil {
+	if !supported {
+		p := NewReply(RepCommandNotSupported, ATYPIPv4, []byte{0, 0, 0, 0}, []byte{0, 0})
+		if err := p.WriteTo(s.C); err != nil {
 			return nil, err
 		}
-	} else if bb[3] == ATYPIPv6 {
-		addr = make([]byte, 16)
-		if _, err := io.ReadFull(r, addr); err != nil {
-			return nil, err
-		}
-	} else if bb[3] == ATYPDomain {
-		dal := make([]byte, 1)
-		if _, err := io.ReadFull(r, dal); err != nil {
-			return nil, err
-		}
-		if dal[0] == 0 {
-			return nil, ErrBadRequest
-		}
-		addr = make([]byte, int(dal[0]))
-		if _, err := io.ReadFull(r, addr); err != nil {
-			return nil, err
-		}
-		addr = append(dal, addr...)
-	} else {
-		return nil, ErrBadRequest
+		return nil, ErrUnsupportCmd
 	}
-	port := make([]byte, 2)
-	if _, err := io.ReadFull(r, port); err != nil {
-		return nil, err
-	}
-	if Debug {
-		log.Printf("Got Request: %#v %#v %#v %#v %#v %#v\n", bb[0], bb[1], bb[2], bb[3], addr, port)
-	}
-	return &Request{
-		Ver:     bb[0],
-		Cmd:     bb[1],
-		Rsv:     bb[2],
-		Atyp:    bb[3],
-		DstAddr: addr,
-		DstPort: port,
-	}, nil
-}
-
-// NewReply return reply packet can be writed into client
-func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply {
-	if atyp == ATYPDomain {
-		bndaddr = append([]byte{byte(len(bndaddr))}, bndaddr...)
-	}
-	return &Reply{
-		Ver:     Ver,
-		Rep:     rep,
-		Rsv:     0x00,
-		Atyp:    atyp,
-		BndAddr: bndaddr,
-		BndPort: bndport,
-	}
-}
-
-// WriteTo write reply packet into client
-func (r *Reply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Rep, r.Rsv, r.Atyp}); err != nil {
-		return err
-	}
-	if _, err := w.Write(r.BndAddr); err != nil {
-		return err
-	}
-	if _, err := w.Write(r.BndPort); err != nil {
-		return err
-	}
-	if Debug {
-		log.Printf("Sent Reply: %#v %#v %#v %#v %#v %#v\n", r.Ver, r.Rep, r.Rsv, r.Atyp, r.BndAddr, r.BndPort)
-	}
-	return nil
+	return r, nil
 }
