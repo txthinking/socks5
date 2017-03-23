@@ -91,7 +91,12 @@ func (s *Server) GetRequest() (*Request, error) {
 		}
 	}
 	if !supported {
-		p := NewReply(RepCommandNotSupported, ATYPIPv4, []byte{0, 0, 0, 0}, []byte{0, 0})
+		var p *Reply
+		if r.Atyp == ATYPIPv4 || r.Atyp == ATYPDomain {
+			p = NewReply(RepCommandNotSupported, ATYPIPv4, []byte{0x00, 0x00, 0x00, 0x00}, []byte{0x00, 0x00})
+		} else {
+			p = NewReply(RepCommandNotSupported, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
+		}
 		if err := p.WriteTo(s.C); err != nil {
 			return nil, err
 		}

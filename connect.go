@@ -17,7 +17,12 @@ func (r *Request) Connect(c net.Conn) (*net.TCPConn, error) {
 	}
 	rc, err := net.DialTCP("tcp", nil, ta)
 	if err != nil {
-		p := NewReply(RepHostUnreachable, ATYPIPv4, []byte{0x00, 0x00, 0x00, 0x00}, []byte{0x00, 0x00})
+		var p *Reply
+		if r.Atyp == ATYPIPv4 || r.Atyp == ATYPDomain {
+			p = NewReply(RepHostUnreachable, ATYPIPv4, []byte{0x00, 0x00, 0x00, 0x00}, []byte{0x00, 0x00})
+		} else {
+			p = NewReply(RepHostUnreachable, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
+		}
 		if err := p.WriteTo(c); err != nil {
 			return nil, err
 		}

@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-// Address return request address like x.x.x.x:xx
+// Address return request address like ip:xx
 func (r *Request) Address() string {
 	var s string
 	if r.Atyp == ATYPDomain {
