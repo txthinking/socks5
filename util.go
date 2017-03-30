@@ -4,22 +4,28 @@ import (
 	"encoding/binary"
 	"net"
 	"strconv"
-	"strings"
 )
 
-// ParseAddress format net.Addr to raw address
-func ParseAddress(na net.Addr) (a byte, addr []byte, port []byte) {
-	ss := strings.Split(na.String(), ":")
-	ip := net.ParseIP(ss[0])
-	ip4 := ip.To4()
-	if ip4 != nil {
+// ParseAddress format address x.x.x.x:xx to raw address
+func ParseAddress(address string) (a byte, addr []byte, port []byte, err error) {
+	var h, p string
+	h, p, err = net.SplitHostPort(address)
+	if err != nil {
+		return
+	}
+	ip := net.ParseIP(h)
+	if ip4 := ip.To4(); ip4 != nil {
 		a = ATYPIPv4
 		addr = []byte(ip4)
-	} else {
+	} else if ip6 := ip.To16(); ip6 != nil {
 		a = ATYPIPv6
-		addr = []byte(ip)
+		addr = []byte(ip6)
+	} else {
+		a = ATYPDomain
+		addr = []byte{byte(len(h))}
+		addr = append(addr, []byte(h)...)
 	}
-	i, _ := strconv.Atoi(ss[1])
+	i, _ := strconv.Atoi(p)
 	port = make([]byte, 2)
 	binary.BigEndian.PutUint16(port, uint16(i))
 	return
