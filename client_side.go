@@ -124,11 +124,6 @@ func (r *Request) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Cmd, r.Rsv, r.Atyp}); err != nil {
 		return err
 	}
-	if r.Atyp == ATYPDomain {
-		if _, err := w.Write([]byte{byte(len(r.DstAddr))}); err != nil {
-			return err
-		}
-	}
 	if _, err := w.Write(r.DstAddr); err != nil {
 		return err
 	}
