@@ -5,21 +5,13 @@ import (
 	"net"
 )
 
-// Connect remote conn which u want to connect.
-// You may should write your method instead of use this method.
-func (r *Request) Connect(c net.Conn) (*net.TCPConn, error) {
-	return r.ConnectWithDial(c, nil)
-}
-
 // Connect remote conn which u want to connect with your dialer
-func (r *Request) ConnectWithDial(c net.Conn, dial Dialer) (*net.TCPConn, error) {
-	if dial == nil {
-		dial = &DefaultDial{}
-	}
+// Error or OK both replied.
+func (r *Request) Connect(c *net.TCPConn) (*net.TCPConn, error) {
 	if Debug {
 		log.Println("Call:", r.Address())
 	}
-	tmp, err := dial.Dial("tcp", r.Address())
+	tmp, err := Dial.Dial("tcp", r.Address())
 	if err != nil {
 		var p *Reply
 		if r.Atyp == ATYPIPv4 || r.Atyp == ATYPDomain {

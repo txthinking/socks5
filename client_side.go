@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net"
 )
 
 var (
@@ -21,7 +22,7 @@ func NewNegotiationRequest(methods []byte) *NegotiationRequest {
 }
 
 // WriteTo write negotiation request packet into server
-func (r *NegotiationRequest) WriteTo(w io.Writer) error {
+func (r *NegotiationRequest) WriteTo(w *net.TCPConn) error {
 	if _, err := w.Write([]byte{r.Ver}); err != nil {
 		return err
 	}
@@ -38,7 +39,7 @@ func (r *NegotiationRequest) WriteTo(w io.Writer) error {
 }
 
 // NewNegotiationReplyFrom read negotiation reply packet from server
-func NewNegotiationReplyFrom(r io.Reader) (*NegotiationReply, error) {
+func NewNegotiationReplyFrom(r *net.TCPConn) (*NegotiationReply, error) {
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
@@ -67,7 +68,7 @@ func NewUserPassNegotiationRequest(username []byte, password []byte) *UserPassNe
 }
 
 // WriteTo write user password negotiation request packet into server
-func (r *UserPassNegotiationRequest) WriteTo(w io.Writer) error {
+func (r *UserPassNegotiationRequest) WriteTo(w *net.TCPConn) error {
 	if _, err := w.Write([]byte{r.Ver, r.Ulen}); err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (r *UserPassNegotiationRequest) WriteTo(w io.Writer) error {
 }
 
 // NewUserPassNegotiationReplyFrom read user password negotiation reply packet from server
-func NewUserPassNegotiationReplyFrom(r io.Reader) (*UserPassNegotiationReply, error) {
+func NewUserPassNegotiationReplyFrom(r *net.TCPConn) (*UserPassNegotiationReply, error) {
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
@@ -120,7 +121,7 @@ func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte) *Request {
 }
 
 // WriteTo write request packet into server
-func (r *Request) WriteTo(w io.Writer) error {
+func (r *Request) WriteTo(w *net.TCPConn) error {
 	if _, err := w.Write([]byte{r.Ver, r.Cmd, r.Rsv, r.Atyp}); err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func (r *Request) WriteTo(w io.Writer) error {
 }
 
 // NewReplyFrom read reply packet from server
-func NewReplyFrom(r io.Reader) (*Reply, error) {
+func NewReplyFrom(r *net.TCPConn) (*Reply, error) {
 	bb := make([]byte, 4)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err

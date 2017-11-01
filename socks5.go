@@ -108,11 +108,12 @@ type Reply struct {
 	BndPort []byte // 2 bytes
 }
 
-// UDPHeader is the UDP header packet
-type UDPHeader struct {
+// Datagram is the UDP packet
+type Datagram struct {
 	Rsv     []byte // 0x00 0x00
-	Flag    byte
+	Frag    byte
 	Atyp    byte
 	DstAddr []byte
 	DstPort []byte // 2 bytes
+	Data    []byte
 }

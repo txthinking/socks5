@@ -2,7 +2,12 @@ package socks5
 
 import (
 	"errors"
+	"io"
+	"log"
 	"net"
+	"time"
+
+	cache "github.com/patrickmn/go-cache"
 )
 
 var (
@@ -14,63 +19,109 @@ var (
 
 // Server is socks5 server wrapper
 type Server struct {
-	C                 net.Conn
-	CheckUserPass     func(user, pass []byte) bool
-	SelectMethod      func(methods []byte) (method byte, got bool)
-	SupportedCommands []byte // Now only support connect command
+	UserName          string
+	Password          string
+	Method            byte
+	SupportedCommands []byte
+	TCPAddr           *net.TCPAddr
+	UDPAddr           *net.UDPAddr
+	TCPListen         *net.TCPListener
+	UDPConn           *net.UDPConn
+	UDPExchanges      *cache.Cache
+	TCPDeadline       int // Not refreshed
+	TCPTimeout        int
+	UDPDeadline       int // Refreshed
+	UDPSessionTime    int // If client does't send address, use this fixed time
+	Handle            Handler
+	TCPUDPAssociate   *cache.Cache
 }
 
-// NewClassicServer return a server which allow none method and connect command
-func NewClassicServer(c net.Conn) *Server {
-	return &Server{
-		C: c,
-		SelectMethod: func(methods []byte) (method byte, got bool) {
-			for _, m := range methods {
-				if m == MethodNone {
-					method = MethodNone
-					got = true
-					return
-				}
-			}
-			return
-		},
-		SupportedCommands: []byte{CmdConnect},
+// UDPExchange used to store client address and remote connection
+type UDPExchange struct {
+	ClientAddr *net.UDPAddr
+	RemoteConn *net.UDPConn
+}
+
+// NewClassicServer return a server which allow none method
+func NewClassicServer(addr, udpAddr, username, password string, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime int) (*Server, error) {
+	h, _, err := net.SplitHostPort(udpAddr)
+	if err != nil {
+		return nil, err
 	}
+	if h == "" || h == "0.0.0.0" || h == "::" {
+		return nil, errors.New("Must specify your UDP listen IP")
+	}
+	taddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	uaddr, err := net.ResolveUDPAddr("udp", udpAddr)
+	if err != nil {
+		return nil, err
+	}
+	m := MethodNone
+	if username != "" && password != "" {
+		m = MethodUsernamePassword
+	}
+	cs := cache.New(60*time.Minute, 10*time.Minute)
+	cs1 := cache.New(60*time.Minute, 10*time.Minute)
+	s := &Server{
+		Method:            m,
+		UserName:          username,
+		Password:          password,
+		SupportedCommands: []byte{CmdConnect, CmdUDP},
+		TCPAddr:           taddr,
+		UDPAddr:           uaddr,
+		UDPExchanges:      cs,
+		TCPTimeout:        tcpTimeout,
+		TCPDeadline:       tcpDeadline,
+		UDPDeadline:       udpDeadline,
+		UDPSessionTime:    udpSessionTime,
+		TCPUDPAssociate:   cs1,
+	}
+	return s, nil
 }
 
 // Negotiate handle negotiate packet.
 // This method do not handle gssapi(0x01) method now.
-func (s *Server) Negotiate() error {
-	rq, err := NewNegotiationRequestFrom(s.C)
+// Error or OK both replied.
+func (s *Server) Negotiate(c *net.TCPConn) error {
+	rq, err := NewNegotiationRequestFrom(c)
 	if err != nil {
 		return err
 	}
-	m, got := s.SelectMethod(rq.Methods)
+	var got bool
+	var m byte
+	for _, m = range rq.Methods {
+		if m == s.Method {
+			got = true
+		}
+	}
 	if !got {
 		rp := NewNegotiationReply(MethodUnsupportAll)
-		if err := rp.WriteTo(s.C); err != nil {
+		if err := rp.WriteTo(c); err != nil {
 			return err
 		}
 	}
-	rp := NewNegotiationReply(m)
-	if err := rp.WriteTo(s.C); err != nil {
+	rp := NewNegotiationReply(s.Method)
+	if err := rp.WriteTo(c); err != nil {
 		return err
 	}
 
-	if m == MethodUsernamePassword {
-		urq, err := NewUserPassNegotiationRequestFrom(s.C)
+	if s.Method == MethodUsernamePassword {
+		urq, err := NewUserPassNegotiationRequestFrom(c)
 		if err != nil {
 			return err
 		}
-		if !s.CheckUserPass(urq.Uname, urq.Passwd) {
+		if string(urq.Uname) != s.UserName || string(urq.Passwd) != s.Password {
 			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
-			if err := urp.WriteTo(s.C); err != nil {
+			if err := urp.WriteTo(c); err != nil {
 				return err
 			}
 			return ErrUserPassAuth
 		}
 		urp := NewUserPassNegotiationReply(UserPassStatusSuccess)
-		if err := urp.WriteTo(s.C); err != nil {
+		if err := urp.WriteTo(c); err != nil {
 			return err
 		}
 	}
@@ -78,8 +129,9 @@ func (s *Server) Negotiate() error {
 }
 
 // GetRequest get request packet from client, and check command according to SupportedCommands
-func (s *Server) GetRequest() (*Request, error) {
-	r, err := NewRequestFrom(s.C)
+// Error replied.
+func (s *Server) GetRequest(c *net.TCPConn) (*Request, error) {
+	r, err := NewRequestFrom(c)
 	if err != nil {
 		return nil, err
 	}
@@ -97,10 +149,249 @@ func (s *Server) GetRequest() (*Request, error) {
 		} else {
 			p = NewReply(RepCommandNotSupported, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
 		}
-		if err := p.WriteTo(s.C); err != nil {
+		if err := p.WriteTo(c); err != nil {
 			return nil, err
 		}
 		return nil, ErrUnsupportCmd
 	}
 	return r, nil
+}
+
+// Run server
+func (s *Server) Run(h Handler) error {
+	if h == nil {
+		s.Handle = &DefaultHandle{}
+	} else {
+		s.Handle = h
+	}
+	errch := make(chan error)
+	go func() {
+		errch <- s.RunTCPServer()
+	}()
+	go func() {
+		errch <- s.RunUDPServer()
+	}()
+	return <-errch
+}
+
+// RunTCPServer starts tcp server
+func (s *Server) RunTCPServer() error {
+	var err error
+	s.TCPListen, err = net.ListenTCP("tcp", s.TCPAddr)
+	if err != nil {
+		return err
+	}
+	defer s.TCPListen.Close()
+	for {
+		c, err := s.TCPListen.AcceptTCP()
+		if err != nil {
+			return err
+		}
+		go func(c *net.TCPConn) {
+			defer c.Close()
+			if s.TCPTimeout != 0 {
+				if err := c.SetKeepAlivePeriod(time.Duration(s.TCPTimeout) * time.Second); err != nil {
+					log.Println(err)
+					return
+				}
+			}
+			if s.TCPDeadline != 0 {
+				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+					log.Println(err)
+					return
+				}
+			}
+			if err := s.Negotiate(c); err != nil {
+				log.Println(err)
+				return
+			}
+			r, err := s.GetRequest(c)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if err := s.Handle.TCPHandle(s, c, r); err != nil {
+				log.Println(err)
+			}
+		}(c)
+	}
+	return nil
+}
+
+// RunUDPServer starts udp server
+func (s *Server) RunUDPServer() error {
+	var err error
+	s.UDPConn, err = net.ListenUDP("udp", s.UDPAddr)
+	if err != nil {
+		return err
+	}
+	defer s.UDPConn.Close()
+	for {
+		b := make([]byte, 65536)
+		n, addr, err := s.UDPConn.ReadFromUDP(b)
+		if err != nil {
+			return err
+		}
+		go func(addr *net.UDPAddr, b []byte) {
+			d, err := NewDatagramFromBytes(b)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if d.Frag != 0x00 {
+				log.Println("Ignore frag", d.Frag)
+				return
+			}
+			if err := s.Handle.UDPHandle(s, addr, d); err != nil {
+				log.Println(err)
+				return
+			}
+		}(addr, b[0:n])
+	}
+	return nil
+}
+
+// Stop server
+func (s *Server) Stop() error {
+	var err, err1 error
+	if s.TCPListen != nil {
+		err = s.TCPListen.Close()
+	}
+	if s.UDPConn != nil {
+		err1 = s.UDPConn.Close()
+	}
+	if err != nil {
+		return err
+	}
+	return err1
+}
+
+// Handler handle tcp, udp request
+type Handler interface {
+	// Request has not been replied yet
+	TCPHandle(*Server, *net.TCPConn, *Request) error
+	UDPHandle(*Server, *net.UDPAddr, *Datagram) error
+}
+
+// DefaultHandle implements Handler interface
+type DefaultHandle struct {
+}
+
+// TCPHandle auto handle request. You may prefer to do yourself.
+func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
+	if r.Cmd == CmdConnect {
+		rc, err := r.Connect(c)
+		if err != nil {
+			return err
+		}
+		go func() {
+			_, _ = io.Copy(c, rc)
+		}()
+		_, _ = io.Copy(rc, c)
+		return nil
+	}
+	if r.Cmd == CmdUDP {
+		caddr, err := r.UDP(c, s.UDPAddr)
+		if err != nil {
+			return err
+		}
+		_, p, err := net.SplitHostPort(caddr.String())
+		if err != nil {
+			return err
+		}
+		if p == "0" {
+			time.Sleep(time.Duration(s.UDPSessionTime) * time.Second)
+			return nil
+		}
+		ch := make(chan byte)
+		s.TCPUDPAssociate.Set(caddr.String(), ch, cache.DefaultExpiration)
+		<-ch
+		return nil
+	}
+	return ErrUnsupportCmd
+}
+
+// UDPHandle auto handle packet. You may prefer to do yourself.
+func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) error {
+	send := func(ue *UDPExchange, data []byte) error {
+		_, err := ue.RemoteConn.Write(data)
+		if err != nil {
+			return err
+		}
+		if Debug {
+			log.Printf("Sent UDP data to remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), data)
+		}
+		return nil
+	}
+
+	var ue *UDPExchange
+	iue, ok := s.UDPExchanges.Get(addr.String())
+	if ok {
+		ue = iue.(*UDPExchange)
+		return send(ue, d.Data)
+	}
+
+	if Debug {
+		log.Printf("Call udp: %#v\n", d.Address())
+	}
+	c, err := Dial.Dial("udp", d.Address())
+	if err != nil {
+		return err
+	}
+	// A UDP association terminates when the TCP connection that the UDP
+	// ASSOCIATE request arrived on terminates.
+	rc := c.(*net.UDPConn)
+	ue = &UDPExchange{
+		ClientAddr: addr,
+		RemoteConn: rc,
+	}
+	if Debug {
+		log.Printf("Created remote UDP conn for client. client: %#v server: %#v remote: %#v\n", addr.String(), ue.RemoteConn.LocalAddr().String(), d.Address())
+	}
+	s.UDPExchanges.Set(ue.ClientAddr.String(), ue, cache.DefaultExpiration)
+	if err := send(ue, d.Data); err != nil {
+		return err
+	}
+	go func(ue *UDPExchange) {
+		defer func() {
+			v, ok := s.TCPUDPAssociate.Get(ue.ClientAddr.String())
+			if ok {
+				ch := v.(chan byte)
+				ch <- '0'
+			}
+			s.UDPExchanges.Delete(ue.ClientAddr.String())
+			ue.RemoteConn.Close()
+		}()
+		var b [65536]byte
+		for {
+			if s.UDPDeadline != 0 {
+				if err := ue.RemoteConn.SetDeadline(time.Now().Add(time.Duration(s.UDPDeadline) * time.Second)); err != nil {
+					log.Println(err)
+					break
+				}
+			}
+			n, err := ue.RemoteConn.Read(b[:])
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			if Debug {
+				log.Printf("Got UDP data from remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), b[0:n])
+			}
+			a, addr, port, err := ParseAddress(ue.ClientAddr.String())
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			d1 := NewDatagram(a, addr, port, b[0:n])
+			if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), ue.ClientAddr); err != nil {
+				log.Println(err)
+				break
+			}
+			if Debug {
+				log.Printf("Sent Datagram. client: %#v server: %#v remote: %#v data: %#v %#v %#v %#v %#v %#v datagram address: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), d1.Rsv, d1.Frag, d1.Atyp, d1.DstAddr, d1.DstPort, d1.Data, d1.Address())
+			}
+		}
+	}(ue)
+	return nil
 }

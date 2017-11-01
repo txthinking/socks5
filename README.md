@@ -13,49 +13,23 @@ $ go get github.com/txthinking/socks5
 ### Example
 
 ```
-func ExampleServer() {
-	socks5.Debug = true // enable socks5 debug log
+package main
 
-	l, err := net.Listen("tcp", ":1980")
+import "github.com/txthinking/socks5"
+
+func main() {
+	socks5.Debug = true
+	s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1:1080", "", "", 0, 0, 0, 60)
 	if err != nil {
-		log.Println(err)
-		return
+		panic(err)
 	}
-	defer l.Close()
-
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		go func(c net.Conn) {
-			defer c.Close()
-			s5s := socks5.NewClassicServer(c)
-			if err := s5s.Negotiate(); err != nil {
-				log.Println(err)
-				return
-			}
-			r, err := s5s.GetRequest()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			rc, err := r.Connect(c)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			defer rc.Close()
-			go func() {
-				_, _ = io.Copy(c, rc)
-			}()
-			_, _ = io.Copy(rc, c)
-		}(c)
+	if err := s.Run(nil); err != nil {
+		panic(err)
 	}
 }
-
 ```
-Now you have a socks5 proxy listen on :1980
+Test with curl: `curl -x socks5://127.0.0.1:1080 http://httpbin.org/ip`
 
-You can test with curl: `curl --socks5-hostname YOUR_SERVER_IP:1980 http://httpbin.org/ip`
+### Users: 
+
+ * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
