@@ -25,6 +25,7 @@ type Server struct {
 	SupportedCommands []byte
 	TCPAddr           *net.TCPAddr
 	UDPAddr           *net.UDPAddr
+	ServerAddr        *net.UDPAddr
 	TCPListen         *net.TCPListener
 	UDPConn           *net.UDPConn
 	UDPExchanges      *cache.Cache
@@ -43,19 +44,20 @@ type UDPExchange struct {
 }
 
 // NewClassicServer return a server which allow none method
-func NewClassicServer(addr, udpAddr, username, password string, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime int) (*Server, error) {
-	h, _, err := net.SplitHostPort(udpAddr)
+func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime int) (*Server, error) {
+	_, p, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
-	}
-	if h == "" || h == "0.0.0.0" || h == "::" {
-		return nil, errors.New("Must specify your UDP listen IP")
 	}
 	taddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	uaddr, err := net.ResolveUDPAddr("udp", udpAddr)
+	uaddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	saddr, err := net.ResolveUDPAddr("udp", ip+":"+p)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +74,7 @@ func NewClassicServer(addr, udpAddr, username, password string, tcpTimeout, tcpD
 		SupportedCommands: []byte{CmdConnect, CmdUDP},
 		TCPAddr:           taddr,
 		UDPAddr:           uaddr,
+		ServerAddr:        saddr,
 		UDPExchanges:      cs,
 		TCPTimeout:        tcpTimeout,
 		TCPDeadline:       tcpDeadline,
@@ -291,7 +294,7 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		return nil
 	}
 	if r.Cmd == CmdUDP {
-		caddr, err := r.UDP(c, s.UDPAddr)
+		caddr, err := r.UDP(c, s.ServerAddr)
 		if err != nil {
 			return err
 		}

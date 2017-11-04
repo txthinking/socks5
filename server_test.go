@@ -6,7 +6,7 @@ import (
 
 func _TestServer(t *testing.T) {
 	Debug = true // enable socks5 debug log
-	s, err := NewClassicServer("192.168.1.5:1081", "a", "a", 0, 0, 0, 0)
+	s, err := NewClassicServer("127.0.0.1:1081", "127.0.0.1", "", "", 0, 0, 0, 0)
 	if err != nil {
 		panic(err)
 	}
