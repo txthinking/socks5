@@ -19,7 +19,7 @@ import "github.com/txthinking/socks5"
 
 func main() {
 	socks5.Debug = true
-	s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1:1080", "", "", 0, 0, 0, 60)
+	s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1", "", "", 0, 0, 0, 60)
 	if err != nil {
 		panic(err)
 	}
