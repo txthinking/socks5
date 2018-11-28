@@ -1,10 +1,10 @@
 package socks5
 
-import "github.com/txthinking/ant"
+import "github.com/txthinking/x"
 
 // Debug enable debug log
 var Debug bool
-var Dial ant.Dialer = ant.DefaultDial
+var Dial x.Dialer = x.DefaultDial
 
 func init() {
 }

@@ -65,8 +65,8 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadli
 	if username != "" && password != "" {
 		m = MethodUsernamePassword
 	}
-	cs := cache.New(60*time.Minute, 10*time.Minute)
-	cs1 := cache.New(60*time.Minute, 10*time.Minute)
+	cs := cache.New(cache.NoExpiration, cache.NoExpiration)
+	cs1 := cache.New(cache.NoExpiration, cache.NoExpiration)
 	s := &Server{
 		Method:            m,
 		UserName:          username,
@@ -287,6 +287,8 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		if err != nil {
 			return err
 		}
+		defer rc.Close()
+		// TODO
 		go func() {
 			_, _ = io.Copy(c, rc)
 		}()
@@ -339,6 +341,12 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	}
 	c, err := Dial.Dial("udp", d.Address())
 	if err != nil {
+		v, ok := s.TCPUDPAssociate.Get(addr.String())
+		if ok {
+			ch := v.(chan byte)
+			ch <- 0x00
+			s.TCPUDPAssociate.Delete(addr.String())
+		}
 		return err
 	}
 	// A UDP association terminates when the TCP connection that the UDP
@@ -351,16 +359,24 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	if Debug {
 		log.Printf("Created remote UDP conn for client. client: %#v server: %#v remote: %#v\n", addr.String(), ue.RemoteConn.LocalAddr().String(), d.Address())
 	}
-	s.UDPExchanges.Set(ue.ClientAddr.String(), ue, cache.DefaultExpiration)
 	if err := send(ue, d.Data); err != nil {
+		v, ok := s.TCPUDPAssociate.Get(ue.ClientAddr.String())
+		if ok {
+			ch := v.(chan byte)
+			ch <- 0x00
+			s.TCPUDPAssociate.Delete(ue.ClientAddr.String())
+		}
+		ue.RemoteConn.Close()
 		return err
 	}
+	s.UDPExchanges.Set(ue.ClientAddr.String(), ue, cache.DefaultExpiration)
 	go func(ue *UDPExchange) {
 		defer func() {
 			v, ok := s.TCPUDPAssociate.Get(ue.ClientAddr.String())
 			if ok {
 				ch := v.(chan byte)
-				ch <- '0'
+				ch <- 0x00
+				s.TCPUDPAssociate.Delete(ue.ClientAddr.String())
 			}
 			s.UDPExchanges.Delete(ue.ClientAddr.String())
 			ue.RemoteConn.Close()
