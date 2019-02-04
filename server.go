@@ -2,7 +2,6 @@ package socks5
 
 import (
 	"errors"
-	"io"
 	"log"
 	"net"
 	"time"
@@ -29,9 +28,9 @@ type Server struct {
 	TCPListen         *net.TCPListener
 	UDPConn           *net.UDPConn
 	UDPExchanges      *cache.Cache
-	TCPDeadline       int // Not refreshed
+	TCPDeadline       int
 	TCPTimeout        int
-	UDPDeadline       int // Refreshed
+	UDPDeadline       int
 	UDPSessionTime    int // If client does't send address, use this fixed time
 	Handle            Handler
 	TCPUDPAssociate   *cache.Cache
@@ -288,11 +287,38 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 			return err
 		}
 		defer rc.Close()
-		// TODO
 		go func() {
-			_, _ = io.Copy(c, rc)
+			var bf [1024 * 2]byte
+			for {
+				if s.TCPDeadline != 0 {
+					if err := rc.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+						return
+					}
+				}
+				i, err := rc.Read(bf[:])
+				if err != nil {
+					return
+				}
+				if _, err := c.Write(bf[0:i]); err != nil {
+					return
+				}
+			}
 		}()
-		_, _ = io.Copy(rc, c)
+		var bf [1024 * 2]byte
+		for {
+			if s.TCPDeadline != 0 {
+				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+					return nil
+				}
+			}
+			i, err := c.Read(bf[:])
+			if err != nil {
+				return nil
+			}
+			if _, err := rc.Write(bf[0:i]); err != nil {
+				return nil
+			}
+		}
 		return nil
 	}
 	if r.Cmd == CmdUDP {
