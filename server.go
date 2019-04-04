@@ -417,7 +417,6 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 			}
 			n, err := ue.RemoteConn.Read(b[:])
 			if err != nil {
-				log.Println(err)
 				break
 			}
 			if Debug {
@@ -430,7 +429,6 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 			}
 			d1 := NewDatagram(a, addr, port, b[0:n])
 			if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), ue.ClientAddr); err != nil {
-				log.Println(err)
 				break
 			}
 			if Debug {
