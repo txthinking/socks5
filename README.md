@@ -17,38 +17,38 @@ $ go get github.com/txthinking/socks5
 
 * Negotiation:
     * `type NegotiationRequest struct`
-        * `func NewNegotiationRequest(methods []byte) *NegotiationRequest`, in client
-        * `func (r *NegotiationRequest) WriteTo(w *net.TCPConn) error`, client writes to server
-        * `func NewNegotiationRequestFrom(r *net.TCPConn) (*NegotiationRequest, error)`, server reads from client
+        * `func NewNegotiationRequest(methods []byte)`, in client
+        * `func (r *NegotiationRequest) WriteTo(w *net.TCPConn)`, client writes to server
+        * `func NewNegotiationRequestFrom(r *net.TCPConn)`, server reads from client
     * `type NegotiationReply struct`
-        * `func NewNegotiationReply(method byte) *NegotiationReply`, in server
-        * `func (r *NegotiationReply) WriteTo(w *net.TCPConn) error`, server writes to client
-        * `func NewNegotiationReplyFrom(r *net.TCPConn) (*NegotiationReply, error)`, client reads from server
+        * `func NewNegotiationReply(method byte)`, in server
+        * `func (r *NegotiationReply) WriteTo(w *net.TCPConn)`, server writes to client
+        * `func NewNegotiationReplyFrom(r *net.TCPConn)`, client reads from server
 * User and password negotiation:
     * `type UserPassNegotiationRequest struct`
-        * `func NewUserPassNegotiationRequest(username []byte, password []byte) *UserPassNegotiationRequest`, in client
-        * `func (r *UserPassNegotiationRequest) WriteTo(w *net.TCPConn) error`, client writes to server
-        * `func NewUserPassNegotiationRequestFrom(r *net.TCPConn) (*UserPassNegotiationRequest, error)`, server reads from client
+        * `func NewUserPassNegotiationRequest(username []byte, password []byte)`, in client
+        * `func (r *UserPassNegotiationRequest) WriteTo(w *net.TCPConn)`, client writes to server
+        * `func NewUserPassNegotiationRequestFrom(r *net.TCPConn)`, server reads from client
     * `type UserPassNegotiationReply struct`
-        * `func NewUserPassNegotiationReply(status byte) *UserPassNegotiationReply`, in server
-        * `func (r *UserPassNegotiationReply) WriteTo(w *net.TCPConn) error`, server writes to client
-        * `func NewUserPassNegotiationReplyFrom(r *net.TCPConn) (*UserPassNegotiationReply, error)`, client reads from server
+        * `func NewUserPassNegotiationReply(status byte)`, in server
+        * `func (r *UserPassNegotiationReply) WriteTo(w *net.TCPConn)`, server writes to client
+        * `func NewUserPassNegotiationReplyFrom(r *net.TCPConn)`, client reads from server
 * Request:
     * `type Request struct`
-        * `func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte) *Request`, in client
-        * `func (r *Request) WriteTo(w *net.TCPConn) error`, client writes to server
-        * `func NewRequestFrom(r *net.TCPConn) (*Request, error)`, server reads from client
+        * `func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte)`, in client
+        * `func (r *Request) WriteTo(w *net.TCPConn)`, client writes to server
+        * `func NewRequestFrom(r *net.TCPConn)`, server reads from client
         * After server gets the client's *Request, processes...
 * Reply:
     * `type Reply struct`
-        * `func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply`
-        * `func (r *Reply) WriteTo(w *net.TCPConn) error`, server writes to client
-        * `func NewReplyFrom(r *net.TCPConn) (*Reply, error)`, client reads from server
+        * `func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte)`, in server
+        * `func (r *Reply) WriteTo(w *net.TCPConn)`, server writes to client
+        * `func NewReplyFrom(r *net.TCPConn)`, client reads from server
 * Datagram:
     * `type Datagram struct`
-        * `func NewDatagramFromBytes(bb []byte) (*Datagram, error)`, in server
-        * `func NewDatagram(atyp byte, dstaddr []byte, dstport []byte, data []byte) *Datagram`, in server
-        * `func (d *Datagram) Bytes() []byte`, in server
+        * `func NewDatagram(atyp byte, dstaddr []byte, dstport []byte, data []byte)`
+        * `func NewDatagramFromBytes(bb []byte) (*Datagram, error)`
+        * `func (d *Datagram) Bytes() []byte`
 
 ### Advanced API
 
