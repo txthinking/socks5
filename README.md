@@ -68,7 +68,7 @@ s.Run(Handler)
 ```
 
 * If you want a standard socks5 server, pass in nil
-* If you want handle data by yourself, just pass in a custom Handler
+* If you want to handle data by yourself, pass in a custom Handler
 
 
 ### Users:
