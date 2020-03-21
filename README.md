@@ -63,8 +63,8 @@ Also, here is a advanced interfaces.
 This is example:
 
 ```
-s, _ := NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime int) (*Server, error)
-s.Run(h Handler)
+s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime)
+s.Run(Handler)
 ```
 
 * If you want a standard socks5 server, pass in nil
