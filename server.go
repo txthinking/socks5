@@ -101,12 +101,12 @@ func (s *Server) Negotiate(c *net.TCPConn) error {
 	}
 	if !got {
 		rp := NewNegotiationReply(MethodUnsupportAll)
-		if err := rp.WriteTo(c); err != nil {
+		if _, err := rp.WriteTo(c); err != nil {
 			return err
 		}
 	}
 	rp := NewNegotiationReply(s.Method)
-	if err := rp.WriteTo(c); err != nil {
+	if _, err := rp.WriteTo(c); err != nil {
 		return err
 	}
 
@@ -117,13 +117,13 @@ func (s *Server) Negotiate(c *net.TCPConn) error {
 		}
 		if string(urq.Uname) != s.UserName || string(urq.Passwd) != s.Password {
 			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
-			if err := urp.WriteTo(c); err != nil {
+			if _, err := urp.WriteTo(c); err != nil {
 				return err
 			}
 			return ErrUserPassAuth
 		}
 		urp := NewUserPassNegotiationReply(UserPassStatusSuccess)
-		if err := urp.WriteTo(c); err != nil {
+		if _, err := urp.WriteTo(c); err != nil {
 			return err
 		}
 	}
@@ -151,7 +151,7 @@ func (s *Server) GetRequest(c *net.TCPConn) (*Request, error) {
 		} else {
 			p = NewReply(RepCommandNotSupported, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
 		}
-		if err := p.WriteTo(c); err != nil {
+		if _, err := p.WriteTo(c); err != nil {
 			return nil, err
 		}
 		return nil, ErrUnsupportCmd
@@ -268,6 +268,32 @@ func (s *Server) Stop() error {
 	return err1
 }
 
+// TCP connection waits for associated UDP to close
+func (s *Server) TCPWaitsForUDP(addr *net.UDPAddr) error {
+	_, p, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return err
+	}
+	if p == "0" {
+		time.Sleep(time.Duration(s.UDPSessionTime) * time.Second)
+		return nil
+	}
+	ch := make(chan byte)
+	s.TCPUDPAssociate.Set(addr.String(), ch, cache.DefaultExpiration)
+	<-ch
+	return nil
+}
+
+// UDP releases associated TCP
+func (s *Server) UDPReleasesTCP(addr *net.UDPAddr) {
+	v, ok := s.TCPUDPAssociate.Get(addr.String())
+	if ok {
+		ch := v.(chan byte)
+		ch <- 0x00
+		s.TCPUDPAssociate.Delete(addr.String())
+	}
+}
+
 // Handler handle tcp, udp request
 type Handler interface {
 	// Request has not been replied yet
@@ -326,17 +352,9 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		if err != nil {
 			return err
 		}
-		_, p, err := net.SplitHostPort(caddr.String())
-		if err != nil {
+		if err := s.TCPWaitsForUDP(caddr); err != nil {
 			return err
 		}
-		if p == "0" {
-			time.Sleep(time.Duration(s.UDPSessionTime) * time.Second)
-			return nil
-		}
-		ch := make(chan byte)
-		s.TCPUDPAssociate.Set(caddr.String(), ch, cache.DefaultExpiration)
-		<-ch
 		return nil
 	}
 	return ErrUnsupportCmd
@@ -367,12 +385,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	}
 	c, err := Dial.Dial("udp", d.Address())
 	if err != nil {
-		v, ok := s.TCPUDPAssociate.Get(addr.String())
-		if ok {
-			ch := v.(chan byte)
-			ch <- 0x00
-			s.TCPUDPAssociate.Delete(addr.String())
-		}
+		s.UDPReleasesTCP(addr)
 		return err
 	}
 	// A UDP association terminates when the TCP connection that the UDP
@@ -386,24 +399,14 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 		log.Printf("Created remote UDP conn for client. client: %#v server: %#v remote: %#v\n", addr.String(), ue.RemoteConn.LocalAddr().String(), d.Address())
 	}
 	if err := send(ue, d.Data); err != nil {
-		v, ok := s.TCPUDPAssociate.Get(ue.ClientAddr.String())
-		if ok {
-			ch := v.(chan byte)
-			ch <- 0x00
-			s.TCPUDPAssociate.Delete(ue.ClientAddr.String())
-		}
+		s.UDPReleasesTCP(ue.ClientAddr)
 		ue.RemoteConn.Close()
 		return err
 	}
 	s.UDPExchanges.Set(ue.ClientAddr.String(), ue, cache.DefaultExpiration)
 	go func(ue *UDPExchange) {
 		defer func() {
-			v, ok := s.TCPUDPAssociate.Get(ue.ClientAddr.String())
-			if ok {
-				ch := v.(chan byte)
-				ch <- 0x00
-				s.TCPUDPAssociate.Delete(ue.ClientAddr.String())
-			}
+			s.UDPReleasesTCP(ue.ClientAddr)
 			s.UDPExchanges.Delete(ue.ClientAddr.String())
 			ue.RemoteConn.Close()
 		}()

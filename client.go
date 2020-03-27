@@ -60,7 +60,7 @@ func (c *Client) Negotiate() error {
 		m = MethodUsernamePassword
 	}
 	rq := NewNegotiationRequest([]byte{m})
-	if err := rq.WriteTo(c.TCPConn); err != nil {
+	if _, err := rq.WriteTo(c.TCPConn); err != nil {
 		return err
 	}
 	rp, err := NewNegotiationReplyFrom(c.TCPConn)
@@ -72,7 +72,7 @@ func (c *Client) Negotiate() error {
 	}
 	if m == MethodUsernamePassword {
 		urq := NewUserPassNegotiationRequest([]byte(c.UserName), []byte(c.Password))
-		if err := urq.WriteTo(c.TCPConn); err != nil {
+		if _, err := urq.WriteTo(c.TCPConn); err != nil {
 			return err
 		}
 		urp, err := NewUserPassNegotiationReplyFrom(c.TCPConn)
@@ -87,7 +87,7 @@ func (c *Client) Negotiate() error {
 }
 
 func (c *Client) Request(r *Request) (*Reply, error) {
-	if err := r.WriteTo(c.TCPConn); err != nil {
+	if _, err := r.WriteTo(c.TCPConn); err != nil {
 		return nil, err
 	}
 	rp, err := NewReplyFrom(c.TCPConn)

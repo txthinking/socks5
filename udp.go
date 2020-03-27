@@ -19,7 +19,7 @@ func (r *Request) UDP(c *net.TCPConn, serverAddr *net.UDPAddr) (*net.UDPAddr, er
 		} else {
 			p = NewReply(RepHostUnreachable, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
 		}
-		if err := p.WriteTo(c); err != nil {
+		if _, err := p.WriteTo(c); err != nil {
 			return nil, err
 		}
 		return nil, err
@@ -35,13 +35,13 @@ func (r *Request) UDP(c *net.TCPConn, serverAddr *net.UDPAddr) (*net.UDPAddr, er
 		} else {
 			p = NewReply(RepHostUnreachable, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
 		}
-		if err := p.WriteTo(c); err != nil {
+		if _, err := p.WriteTo(c); err != nil {
 			return nil, err
 		}
 		return nil, err
 	}
 	p := NewReply(RepSuccess, a, addr, port)
-	if err := p.WriteTo(c); err != nil {
+	if _, err := p.WriteTo(c); err != nil {
 		return nil, err
 	}
 

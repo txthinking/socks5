@@ -18,32 +18,32 @@ $ go get github.com/txthinking/socks5
 * Negotiation:
     * `type NegotiationRequest struct`
         * `func NewNegotiationRequest(methods []byte)`, in client
-        * `func (r *NegotiationRequest) WriteTo(w *net.TCPConn)`, client writes to server
-        * `func NewNegotiationRequestFrom(r *net.TCPConn)`, server reads from client
+        * `func (r *NegotiationRequest) WriteTo(w io.Writer)`, client writes to server
+        * `func NewNegotiationRequestFrom(r io.Reader)`, server reads from client
     * `type NegotiationReply struct`
         * `func NewNegotiationReply(method byte)`, in server
-        * `func (r *NegotiationReply) WriteTo(w *net.TCPConn)`, server writes to client
-        * `func NewNegotiationReplyFrom(r *net.TCPConn)`, client reads from server
+        * `func (r *NegotiationReply) WriteTo(w io.Writer)`, server writes to client
+        * `func NewNegotiationReplyFrom(r io.Reader)`, client reads from server
 * User and password negotiation:
     * `type UserPassNegotiationRequest struct`
         * `func NewUserPassNegotiationRequest(username []byte, password []byte)`, in client
-        * `func (r *UserPassNegotiationRequest) WriteTo(w *net.TCPConn)`, client writes to server
-        * `func NewUserPassNegotiationRequestFrom(r *net.TCPConn)`, server reads from client
+        * `func (r *UserPassNegotiationRequest) WriteTo(w io.Writer)`, client writes to server
+        * `func NewUserPassNegotiationRequestFrom(r io.Reader)`, server reads from client
     * `type UserPassNegotiationReply struct`
         * `func NewUserPassNegotiationReply(status byte)`, in server
-        * `func (r *UserPassNegotiationReply) WriteTo(w *net.TCPConn)`, server writes to client
-        * `func NewUserPassNegotiationReplyFrom(r *net.TCPConn)`, client reads from server
+        * `func (r *UserPassNegotiationReply) WriteTo(w io.Writer)`, server writes to client
+        * `func NewUserPassNegotiationReplyFrom(r io.Reader)`, client reads from server
 * Request:
     * `type Request struct`
         * `func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte)`, in client
-        * `func (r *Request) WriteTo(w *net.TCPConn)`, client writes to server
-        * `func NewRequestFrom(r *net.TCPConn)`, server reads from client
+        * `func (r *Request) WriteTo(w io.Writer)`, client writes to server
+        * `func NewRequestFrom(r io.Reader)`, server reads from client
         * After server gets the client's *Request, processes...
 * Reply:
     * `type Reply struct`
         * `func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte)`, in server
-        * `func (r *Reply) WriteTo(w *net.TCPConn)`, server writes to client
-        * `func NewReplyFrom(r *net.TCPConn)`, client reads from server
+        * `func (r *Reply) WriteTo(w io.Writer)`, server writes to client
+        * `func NewReplyFrom(r io.Reader)`, client reads from server
 * Datagram:
     * `type Datagram struct`
         * `func NewDatagram(atyp byte, dstaddr []byte, dstport []byte, data []byte)`

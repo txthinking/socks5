@@ -51,14 +51,17 @@ func NewNegotiationReply(method byte) *NegotiationReply {
 }
 
 // WriteTo write negotiation reply packet into client
-func (r *NegotiationReply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Method}); err != nil {
-		return err
+func (r *NegotiationReply) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	i, err := w.Write([]byte{r.Ver, r.Method})
+	n = n + i
+	if err != nil {
+		return int64(n), err
 	}
 	if Debug {
 		log.Printf("Sent NegotiationReply: %#v %#v\n", r.Ver, r.Method)
 	}
-	return nil
+	return int64(n), nil
 }
 
 // NewUserPassNegotiationRequestFrom read user password negotiation request packet from client
@@ -105,14 +108,17 @@ func NewUserPassNegotiationReply(status byte) *UserPassNegotiationReply {
 }
 
 // WriteTo write negotiation username password reply packet into client
-func (r *UserPassNegotiationReply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Status}); err != nil {
-		return err
+func (r *UserPassNegotiationReply) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	i, err := w.Write([]byte{r.Ver, r.Status})
+	n = n + i
+	if err != nil {
+		return int64(n), err
 	}
 	if Debug {
 		log.Printf("Sent UserPassNegotiationReply: %#v %#v \n", r.Ver, r.Status)
 	}
-	return nil
+	return int64(n), nil
 }
 
 // NewRequestFrom read requst packet from client
@@ -184,20 +190,27 @@ func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply {
 }
 
 // WriteTo write reply packet into client
-func (r *Reply) WriteTo(w io.Writer) error {
-	if _, err := w.Write([]byte{r.Ver, r.Rep, r.Rsv, r.Atyp}); err != nil {
-		return err
+func (r *Reply) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	i, err := w.Write([]byte{r.Ver, r.Rep, r.Rsv, r.Atyp})
+	n = n + i
+	if err != nil {
+		return int64(n), err
 	}
-	if _, err := w.Write(r.BndAddr); err != nil {
-		return err
+	i, err = w.Write(r.BndAddr)
+	n = n + i
+	if err != nil {
+		return int64(n), err
 	}
-	if _, err := w.Write(r.BndPort); err != nil {
-		return err
+	i, err = w.Write(r.BndPort)
+	n = n + i
+	if err != nil {
+		return int64(n), err
 	}
 	if Debug {
 		log.Printf("Sent Reply: %#v %#v %#v %#v %#v %#v\n", r.Ver, r.Rep, r.Rsv, r.Atyp, r.BndAddr, r.BndPort)
 	}
-	return nil
+	return int64(n), nil
 }
 
 func NewDatagramFromBytes(bb []byte) (*Datagram, error) {
