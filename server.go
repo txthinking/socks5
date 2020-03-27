@@ -174,7 +174,10 @@ func (s *Server) ListenAndServe(h Handler) error {
 			return s.RunTCPServer()
 		},
 		Stop: func() error {
-			return s.TCPListen.Close()
+			if s.TCPListen != nil {
+				return s.TCPListen.Close()
+			}
+			return nil
 		},
 	})
 	s.RunnerGroup.Add(&runnergroup.Runner{
@@ -182,7 +185,10 @@ func (s *Server) ListenAndServe(h Handler) error {
 			return s.RunUDPServer()
 		},
 		Stop: func() error {
-			return s.UDPConn.Close()
+			if s.UDPConn != nil {
+				return s.UDPConn.Close()
+			}
+			return nil
 		},
 	})
 	return s.RunnerGroup.Wait()

@@ -9,5 +9,5 @@ func ExampleServer() {
 	}
 	// You can pass in custom Handler
 	s.ListenAndServe(nil)
-	// Output:
+	// #Output:
 }
