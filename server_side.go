@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"log"
-	"net"
 )
 
 var (
@@ -17,7 +16,7 @@ var (
 )
 
 // NewNegotiationRequestFrom read negotiation requst packet from client
-func NewNegotiationRequestFrom(r *net.TCPConn) (*NegotiationRequest, error) {
+func NewNegotiationRequestFrom(r io.Reader) (*NegotiationRequest, error) {
 	// memory strict
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
@@ -52,7 +51,7 @@ func NewNegotiationReply(method byte) *NegotiationReply {
 }
 
 // WriteTo write negotiation reply packet into client
-func (r *NegotiationReply) WriteTo(w *net.TCPConn) error {
+func (r *NegotiationReply) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Method}); err != nil {
 		return err
 	}
@@ -63,7 +62,7 @@ func (r *NegotiationReply) WriteTo(w *net.TCPConn) error {
 }
 
 // NewUserPassNegotiationRequestFrom read user password negotiation request packet from client
-func NewUserPassNegotiationRequestFrom(r *net.TCPConn) (*UserPassNegotiationRequest, error) {
+func NewUserPassNegotiationRequestFrom(r io.Reader) (*UserPassNegotiationRequest, error) {
 	bb := make([]byte, 2)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
@@ -106,7 +105,7 @@ func NewUserPassNegotiationReply(status byte) *UserPassNegotiationReply {
 }
 
 // WriteTo write negotiation username password reply packet into client
-func (r *UserPassNegotiationReply) WriteTo(w *net.TCPConn) error {
+func (r *UserPassNegotiationReply) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Status}); err != nil {
 		return err
 	}
@@ -117,7 +116,7 @@ func (r *UserPassNegotiationReply) WriteTo(w *net.TCPConn) error {
 }
 
 // NewRequestFrom read requst packet from client
-func NewRequestFrom(r *net.TCPConn) (*Request, error) {
+func NewRequestFrom(r io.Reader) (*Request, error) {
 	bb := make([]byte, 4)
 	if _, err := io.ReadFull(r, bb); err != nil {
 		return nil, err
@@ -185,7 +184,7 @@ func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply {
 }
 
 // WriteTo write reply packet into client
-func (r *Reply) WriteTo(w *net.TCPConn) error {
+func (r *Reply) WriteTo(w io.Writer) error {
 	if _, err := w.Write([]byte{r.Ver, r.Rep, r.Rsv, r.Atyp}); err != nil {
 		return err
 	}
