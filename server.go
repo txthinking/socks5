@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
+	"golang.cc/runnergroup"
 )
 
 var (
@@ -34,6 +35,7 @@ type Server struct {
 	UDPSessionTime    int // If client does't send address, use this fixed time
 	Handle            Handler
 	TCPUDPAssociate   *cache.Cache
+	RunnerGroup       *runnergroup.RunnerGroup
 }
 
 // UDPExchange used to store client address and remote connection
@@ -80,6 +82,7 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadli
 		UDPDeadline:       udpDeadline,
 		UDPSessionTime:    udpSessionTime,
 		TCPUDPAssociate:   cs1,
+		RunnerGroup:       runnergroup.New(),
 	}
 	return s, nil
 }
@@ -160,20 +163,29 @@ func (s *Server) GetRequest(c *net.TCPConn) (*Request, error) {
 }
 
 // Run server
-func (s *Server) Run(h Handler) error {
+func (s *Server) ListenAndServe(h Handler) error {
 	if h == nil {
 		s.Handle = &DefaultHandle{}
 	} else {
 		s.Handle = h
 	}
-	errch := make(chan error)
-	go func() {
-		errch <- s.RunTCPServer()
-	}()
-	go func() {
-		errch <- s.RunUDPServer()
-	}()
-	return <-errch
+	s.RunnerGroup.Add(&runnergroup.Runner{
+		Start: func() error {
+			return s.RunTCPServer()
+		},
+		Stop: func() error {
+			return s.TCPListen.Close()
+		},
+	})
+	s.RunnerGroup.Add(&runnergroup.Runner{
+		Start: func() error {
+			return s.RunUDPServer()
+		},
+		Stop: func() error {
+			return s.UDPConn.Close()
+		},
+	})
+	return s.RunnerGroup.Wait()
 }
 
 // RunTCPServer starts tcp server
@@ -254,18 +266,8 @@ func (s *Server) RunUDPServer() error {
 }
 
 // Stop server
-func (s *Server) Stop() error {
-	var err, err1 error
-	if s.TCPListen != nil {
-		err = s.TCPListen.Close()
-	}
-	if s.UDPConn != nil {
-		err1 = s.UDPConn.Close()
-	}
-	if err != nil {
-		return err
-	}
-	return err1
+func (s *Server) Shutdown() error {
+	return s.RunnerGroup.Done()
 }
 
 // TCP connection waits for associated UDP to close

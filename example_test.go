@@ -8,5 +8,6 @@ func ExampleServer() {
 		panic(err)
 	}
 	// You can pass in custom Handler
-	s.Run(nil)
+	s.ListenAndServe(nil)
+	// Output:
 }

@@ -64,7 +64,7 @@ This is example:
 
 ```
 s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime)
-s.Run(Handler)
+s.ListenAndServe(Handler)
 ```
 
 * If you want a standard socks5 server, pass in nil
