@@ -19,6 +19,7 @@ type Client struct {
 	UDPDeadline   int
 }
 
+// This is just create a client, you need to use Dial to create conn
 func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Client, error) {
 	c := &Client{
 		Server:      addr,
@@ -31,6 +32,7 @@ func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDead
 	return c, nil
 }
 
+// Clone a new client before a new dial
 func (c *Client) Clone() *Client {
 	return &Client{
 		Server:      c.Server,
