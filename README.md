@@ -47,20 +47,19 @@ $ go get github.com/txthinking/socks5
 * Datagram:
     * `type Datagram struct`
         * `func NewDatagram(atyp byte, dstaddr []byte, dstport []byte, data []byte)`
-        * `func NewDatagramFromBytes(bb []byte) (*Datagram, error)`
-        * `func (d *Datagram) Bytes() []byte`
+        * `func NewDatagramFromBytes(bb []byte)`
+        * `func (d *Datagram) Bytes()`
 
 ### Advanced API
 
-You can process client's request by yourself after reading *Request from client.
-Also, here is a advanced interfaces.
+**Server**. You can process client's request by yourself after reading *Request from client. Also, here is a advanced interfaces.
 
 * `type Server struct`
 * `type Handler interface`
     * `TCPHandle(*Server, *net.TCPConn, *Request) error`
     * `UDPHandle(*Server, *net.UDPAddr, *Datagram) error`
 
-This is example:
+Example:
 
 ```
 s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime)
@@ -70,6 +69,16 @@ s.ListenAndServe(Handler)
 * If you want a standard socks5 server, pass in nil
 * If you want to handle data by yourself, pass in a custom Handler
 
+**Client**. Here is a client support both TCP and UDP and return net.Conn.
+
+* `type Client struct`
+
+Example:
+
+```
+c, _ := socks5.NewClient(server, username, password, tcpTimeout, tcpDeadline, udpDeadline)
+conn, _ := c.Clone().Dial(network, addr)
+```
 
 ### Users:
 

@@ -174,7 +174,7 @@ func NewRequestFrom(r io.Reader) (*Request, error) {
 	}, nil
 }
 
-// NewReply return reply packet can be writed into client
+// NewReply return reply packet can be writed into client, bndaddr should not have domain length
 func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply {
 	if atyp == ATYPDomain {
 		bndaddr = append([]byte{byte(len(bndaddr))}, bndaddr...)
@@ -270,7 +270,7 @@ func NewDatagramFromBytes(bb []byte) (*Datagram, error) {
 	return d, nil
 }
 
-// NewDatagram return datagram packet can be writed into client
+// NewDatagram return datagram packet can be writed into client, dstaddr should not have domain length
 func NewDatagram(atyp byte, dstaddr []byte, dstport []byte, data []byte) *Datagram {
 	if atyp == ATYPDomain {
 		dstaddr = append([]byte{byte(len(dstaddr))}, dstaddr...)

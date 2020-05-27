@@ -120,7 +120,7 @@ func NewUserPassNegotiationReplyFrom(r io.Reader) (*UserPassNegotiationReply, er
 	}, nil
 }
 
-// NewRequest return request packet can be writed into server
+// NewRequest return request packet can be writed into server, dstaddr should not have domain length
 func NewRequest(cmd byte, atyp byte, dstaddr []byte, dstport []byte) *Request {
 	if atyp == ATYPDomain {
 		dstaddr = append([]byte{byte(len(dstaddr))}, dstaddr...)

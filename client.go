@@ -8,30 +8,22 @@ import (
 
 // Client is socks5 client wrapper
 type Client struct {
-	UserName    string
-	Password    string
-	TCPAddr     *net.TCPAddr
-	TCPConn     *net.TCPConn
-	UDPAddr     *net.UDPAddr
-	TCPDeadline int // not refreshed
-	TCPTimeout  int
-	UDPDeadline int // refreshed
+	Server        string
+	UserName      string
+	Password      string
+	TCPConn       *net.TCPConn
+	UDPConn       *net.UDPConn
+	RemoteAddress net.Addr
+	TCPDeadline   int
+	TCPTimeout    int
+	UDPDeadline   int
 }
 
 func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Client, error) {
-	taddr, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	uaddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return nil, err
-	}
 	c := &Client{
+		Server:      addr,
 		UserName:    username,
 		Password:    password,
-		TCPAddr:     taddr,
-		UDPAddr:     uaddr,
 		TCPTimeout:  tcpTimeout,
 		TCPDeadline: tcpDeadline,
 		UDPDeadline: udpDeadline,
@@ -39,8 +31,162 @@ func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDead
 	return c, nil
 }
 
+func (c *Client) Clone() *Client {
+	return &Client{
+		Server:      c.Server,
+		UserName:    c.UserName,
+		Password:    c.Password,
+		TCPTimeout:  c.TCPTimeout,
+		TCPDeadline: c.TCPDeadline,
+		UDPDeadline: c.UDPDeadline,
+	}
+}
+
+// Clone a new client before a new dial
+func (c *Client) Dial(network, addr string) (net.Conn, error) {
+	if network == "tcp" {
+		var err error
+		c.RemoteAddress, err = net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Negotiate(); err != nil {
+			return nil, err
+		}
+		a, h, p, err := ParseAddress(addr)
+		if err != nil {
+			return nil, err
+		}
+		if a == ATYPDomain {
+			h = h[1:]
+		}
+		if _, err := c.Request(NewRequest(CmdConnect, a, h, p)); err != nil {
+			return nil, err
+		}
+		return c, nil
+	}
+	if network == "udp" {
+		var err error
+		c.RemoteAddress, err = net.ResolveUDPAddr("udp", addr)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Negotiate(); err != nil {
+			return nil, err
+		}
+
+		// TODO support local udp addr
+		a, h, p, err := ParseAddress(addr)
+		if err != nil {
+			return nil, err
+		}
+		if a == ATYPIPv4 || a == ATYPDomain {
+			a = ATYPIPv4
+			h = net.IPv4zero
+		}
+		if a == ATYPIPv6 {
+			h = net.IPv6zero
+		}
+		p = []byte{0x00, 0x00}
+		rp, err := c.Request(NewRequest(CmdUDP, a, h, p))
+		if err != nil {
+			return nil, err
+		}
+		tmp, err := Dial.Dial("udp", rp.Address())
+		if err != nil {
+			return nil, err
+		}
+		c.UDPConn = tmp.(*net.UDPConn)
+		return c, nil
+	}
+	return nil, errors.New("unsupport network")
+}
+
+func (c *Client) Read(b []byte) (int, error) {
+	if c.UDPConn == nil {
+		return c.TCPConn.Read(b)
+	}
+	b1 := make([]byte, 65535)
+	n, err := c.UDPConn.Read(b1)
+	if err != nil {
+		return 0, err
+	}
+	d, err := NewDatagramFromBytes(b1[0:n])
+	if err != nil {
+		return 0, err
+	}
+	if len(b) < len(d.Data) {
+		return 0, errors.New("b too small")
+	}
+	n = copy(b, d.Data)
+	return n, nil
+}
+
+func (c *Client) Write(b []byte) (int, error) {
+	if c.UDPConn == nil {
+		return c.TCPConn.Write(b)
+	}
+	a, h, p, err := ParseAddress(c.RemoteAddress.String())
+	if err != nil {
+		return 0, err
+	}
+	if a == ATYPDomain {
+		h = h[1:]
+	}
+	d := NewDatagram(a, h, p, b)
+	b1 := d.Bytes()
+	n, err := c.UDPConn.Write(b1)
+	if err != nil {
+		return 0, err
+	}
+	if len(b1) != n {
+		return 0, errors.New("not write full")
+	}
+	return len(b), nil
+}
+
+func (c *Client) Close() error {
+	if c.UDPConn == nil {
+		return c.TCPConn.Close()
+	}
+	c.TCPConn.Close()
+	return c.UDPConn.Close()
+}
+
+func (c *Client) LocalAddr() net.Addr {
+	if c.UDPConn == nil {
+		return c.TCPConn.LocalAddr()
+	}
+	return c.UDPConn.LocalAddr()
+}
+
+func (c *Client) RemoteAddr() net.Addr {
+	return c.RemoteAddress
+}
+
+func (c *Client) SetDeadline(t time.Time) error {
+	if c.UDPConn == nil {
+		return c.TCPConn.SetDeadline(t)
+	}
+	return c.UDPConn.SetDeadline(t)
+}
+
+func (c *Client) SetReadDeadline(t time.Time) error {
+	if c.UDPConn == nil {
+		return c.TCPConn.SetReadDeadline(t)
+	}
+	return c.UDPConn.SetReadDeadline(t)
+}
+
+func (c *Client) SetWriteDeadline(t time.Time) error {
+	if c.UDPConn == nil {
+		return c.TCPConn.SetWriteDeadline(t)
+	}
+	return c.UDPConn.SetWriteDeadline(t)
+}
+
 func (c *Client) Negotiate() error {
-	con, err := Dial.Dial("tcp", c.TCPAddr.String())
+	con, err := Dial.Dial("tcp", c.Server)
 	if err != nil {
 		return err
 	}
