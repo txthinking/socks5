@@ -77,7 +77,7 @@ Example:
 
 ```
 c, _ := socks5.NewClient(server, username, password, tcpTimeout, tcpDeadline, udpDeadline)
-conn, _ := c.Clone().Dial(network, addr)
+conn, _ := c.Dial(network, addr)
 ```
 
 ### Users:

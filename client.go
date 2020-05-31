@@ -32,9 +32,8 @@ func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDead
 	return c, nil
 }
 
-// Clone a new client before a new dial
-func (c *Client) Clone() *Client {
-	return &Client{
+func (c *Client) Dial(network, addr string) (net.Conn, error) {
+	c = &Client{
 		Server:      c.Server,
 		UserName:    c.UserName,
 		Password:    c.Password,
@@ -42,10 +41,6 @@ func (c *Client) Clone() *Client {
 		TCPDeadline: c.TCPDeadline,
 		UDPDeadline: c.UDPDeadline,
 	}
-}
-
-// Clone a new client before a new dial
-func (c *Client) Dial(network, addr string) (net.Conn, error) {
 	if network == "tcp" {
 		var err error
 		c.RemoteAddress, err = net.ResolveTCPAddr("tcp", addr)
