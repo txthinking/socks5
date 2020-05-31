@@ -20,7 +20,7 @@ func ExampleServer() {
 	// #Output:
 }
 
-func ExampleClient_TCP() {
+func ExampleClient_tcp() {
 	c, err := socks5.NewClient("127.0.0.1:1080", "", "", 60, 0, 60)
 	if err != nil {
 		panic(err)
@@ -45,7 +45,7 @@ func ExampleClient_TCP() {
 	// #Output:
 }
 
-func ExampleClient_UDP() {
+func ExampleClient_udp() {
 	c, err := socks5.NewClient("127.0.0.1:1080", "", "", 60, 0, 60)
 	if err != nil {
 		panic(err)
