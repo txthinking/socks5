@@ -28,7 +28,7 @@ func ExampleClientTCP() {
 	client := &http.Client{
 		Transport: &http.Transport{
 			Dial: func(network, addr string) (net.Conn, error) {
-				return c.Clone().Dial(network, addr)
+				return c.Dial(network, addr)
 			},
 		},
 	}
@@ -50,7 +50,7 @@ func ExampleClientUDP() {
 	if err != nil {
 		panic(err)
 	}
-	conn, err := c.Clone().Dial("udp", "8.8.8.8:53")
+	conn, err := c.Dial("udp", "8.8.8.8:53")
 	if err != nil {
 		panic(err)
 	}
