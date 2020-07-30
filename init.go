@@ -1,8 +1,6 @@
 package socks5
 
 import (
-	"log"
-
 	"github.com/txthinking/x"
 )
 
@@ -11,5 +9,5 @@ var Debug bool
 var Dial x.Dialer = x.DefaultDial
 
 func init() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	// log.SetFlags(log.LstdFlags | log.Lshortfile)
 }

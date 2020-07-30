@@ -1,17 +1,24 @@
 package socks5
 
 import (
+	"bytes"
 	"log"
 	"net"
 )
 
 // UDP remote conn which u want to connect with your dialer.
 // Error or OK both replied.
-// Addr can be used to associate TCP connection with the coming UDP connection,
-// so we can close the TCP connection when UDP connection closed.
-// If client send 0.0.0.0:0 address, alternative solution is set fixed time on TCP connection.
+// Addr can be used to associate TCP connection with the coming UDP connection.
 func (r *Request) UDP(c *net.TCPConn, serverAddr *net.UDPAddr) (*net.UDPAddr, error) {
-	clientAddr, err := net.ResolveUDPAddr("udp", r.Address())
+	var clientAddr *net.UDPAddr
+	var err error
+	if bytes.Compare(r.DstPort, []byte{0x00, 0x00}) == 0 {
+		// If the requested Host/Port is all zeros, the relay should simply use the Host/Port that sent the request.
+		// https://stackoverflow.com/questions/62283351/how-to-use-socks-5-proxy-with-tidudpclient-properly
+		clientAddr, err = net.ResolveUDPAddr("udp", c.RemoteAddr().String())
+	} else {
+		clientAddr, err = net.ResolveUDPAddr("udp", r.Address())
+	}
 	if err != nil {
 		var p *Reply
 		if r.Atyp == ATYPIPv4 || r.Atyp == ATYPDomain {

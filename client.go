@@ -4,23 +4,28 @@ import (
 	"errors"
 	"net"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 )
 
 // Client is socks5 client wrapper
 type Client struct {
-	Server        string
-	UserName      string
-	Password      string
+	Server   string
+	UserName string
+	Password string
+	// On cmd UDP, let server control the tcp and udp connection relationship
 	TCPConn       *net.TCPConn
 	UDPConn       *net.UDPConn
 	RemoteAddress net.Addr
 	TCPDeadline   int
 	TCPTimeout    int
 	UDPDeadline   int
+	UDPSrc        *cache.Cache
 }
 
 // This is just create a client, you need to use Dial to create conn
 func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Client, error) {
+	cs2 := cache.New(cache.NoExpiration, cache.NoExpiration)
 	c := &Client{
 		Server:      addr,
 		UserName:    username,
@@ -28,6 +33,7 @@ func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDead
 		TCPTimeout:  tcpTimeout,
 		TCPDeadline: tcpDeadline,
 		UDPDeadline: udpDeadline,
+		UDPSrc:      cs2,
 	}
 	return c, nil
 }
@@ -40,6 +46,7 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 		TCPTimeout:  c.TCPTimeout,
 		TCPDeadline: c.TCPDeadline,
 		UDPDeadline: c.UDPDeadline,
+		UDPSrc:      c.UDPSrc,
 	}
 	if network == "tcp" {
 		var err error
@@ -72,28 +79,35 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 			return nil, err
 		}
 
-		// TODO support local udp addr
-		a, h, p, err := ParseAddress(addr)
+		var laddr *net.UDPAddr
+		any, ok := c.UDPSrc.Get(addr)
+		if ok {
+			laddr = any.(*net.UDPAddr)
+		}
+		if !ok {
+			laddr = &net.UDPAddr{
+				IP:   c.TCPConn.LocalAddr().(*net.TCPAddr).IP,
+				Port: c.TCPConn.LocalAddr().(*net.TCPAddr).Port,
+				Zone: c.TCPConn.LocalAddr().(*net.TCPAddr).Zone,
+			}
+			c.UDPSrc.Set(addr, laddr, -1)
+		}
+		a, h, p, err := ParseAddress(laddr.String())
 		if err != nil {
 			return nil, err
 		}
-		if a == ATYPIPv4 || a == ATYPDomain {
-			a = ATYPIPv4
-			h = net.IPv4zero
-		}
-		if a == ATYPIPv6 {
-			h = net.IPv6zero
-		}
-		p = []byte{0x00, 0x00}
 		rp, err := c.Request(NewRequest(CmdUDP, a, h, p))
 		if err != nil {
 			return nil, err
 		}
-		tmp, err := Dial.Dial("udp", rp.Address())
+		raddr, err := net.ResolveUDPAddr("udp", rp.Address())
 		if err != nil {
 			return nil, err
 		}
-		c.UDPConn = tmp.(*net.UDPConn)
+		c.UDPConn, err = Dial.DialUDP("udp", laddr, raddr)
+		if err != nil {
+			return nil, err
+		}
 		return c, nil
 	}
 	return nil, errors.New("unsupport network")
@@ -146,7 +160,9 @@ func (c *Client) Close() error {
 	if c.UDPConn == nil {
 		return c.TCPConn.Close()
 	}
-	c.TCPConn.Close()
+	if c.TCPConn != nil {
+		c.TCPConn.Close()
+	}
 	return c.UDPConn.Close()
 }
 
