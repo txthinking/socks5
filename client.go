@@ -4,8 +4,6 @@ import (
 	"errors"
 	"net"
 	"time"
-
-	"github.com/patrickmn/go-cache"
 )
 
 // Client is socks5 client wrapper
@@ -20,12 +18,10 @@ type Client struct {
 	TCPDeadline   int
 	TCPTimeout    int
 	UDPDeadline   int
-	UDPSrc        *cache.Cache
 }
 
 // This is just create a client, you need to use Dial to create conn
 func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Client, error) {
-	cs2 := cache.New(cache.NoExpiration, cache.NoExpiration)
 	c := &Client{
 		Server:      addr,
 		UserName:    username,
@@ -33,7 +29,6 @@ func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDead
 		TCPTimeout:  tcpTimeout,
 		TCPDeadline: tcpDeadline,
 		UDPDeadline: udpDeadline,
-		UDPSrc:      cs2,
 	}
 	return c, nil
 }
@@ -46,7 +41,6 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 		TCPTimeout:  c.TCPTimeout,
 		TCPDeadline: c.TCPDeadline,
 		UDPDeadline: c.UDPDeadline,
-		UDPSrc:      c.UDPSrc,
 	}
 	if network == "tcp" {
 		var err error
@@ -79,18 +73,10 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 			return nil, err
 		}
 
-		var laddr *net.UDPAddr
-		any, ok := c.UDPSrc.Get(addr)
-		if ok {
-			laddr = any.(*net.UDPAddr)
-		}
-		if !ok {
-			laddr = &net.UDPAddr{
-				IP:   c.TCPConn.LocalAddr().(*net.TCPAddr).IP,
-				Port: c.TCPConn.LocalAddr().(*net.TCPAddr).Port,
-				Zone: c.TCPConn.LocalAddr().(*net.TCPAddr).Zone,
-			}
-			c.UDPSrc.Set(addr, laddr, -1)
+		laddr := &net.UDPAddr{
+			IP:   c.TCPConn.LocalAddr().(*net.TCPAddr).IP,
+			Port: c.TCPConn.LocalAddr().(*net.TCPAddr).Port,
+			Zone: c.TCPConn.LocalAddr().(*net.TCPAddr).Zone,
 		}
 		a, h, p, err := ParseAddress(laddr.String())
 		if err != nil {
@@ -111,6 +97,57 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 		return c, nil
 	}
 	return nil, errors.New("unsupport network")
+}
+
+func (c *Client) DialUDP(network, la, ra string) (net.Conn, error) {
+	c = &Client{
+		Server:      c.Server,
+		UserName:    c.UserName,
+		Password:    c.Password,
+		TCPTimeout:  c.TCPTimeout,
+		TCPDeadline: c.TCPDeadline,
+		UDPDeadline: c.UDPDeadline,
+	}
+	var err error
+	c.RemoteAddress, err = net.ResolveUDPAddr("udp", ra)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Negotiate(); err != nil {
+		return nil, err
+	}
+
+	var laddr *net.UDPAddr
+	if la != "" {
+		laddr, err = net.ResolveUDPAddr("udp", la)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if la == "" {
+		laddr = &net.UDPAddr{
+			IP:   c.TCPConn.LocalAddr().(*net.TCPAddr).IP,
+			Port: c.TCPConn.LocalAddr().(*net.TCPAddr).Port,
+			Zone: c.TCPConn.LocalAddr().(*net.TCPAddr).Zone,
+		}
+	}
+	a, h, p, err := ParseAddress(laddr.String())
+	if err != nil {
+		return nil, err
+	}
+	rp, err := c.Request(NewRequest(CmdUDP, a, h, p))
+	if err != nil {
+		return nil, err
+	}
+	raddr, err := net.ResolveUDPAddr("udp", rp.Address())
+	if err != nil {
+		return nil, err
+	}
+	c.UDPConn, err = Dial.DialUDP("udp", laddr, raddr)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (c *Client) Read(b []byte) (int, error) {
