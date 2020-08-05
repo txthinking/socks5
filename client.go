@@ -15,32 +15,29 @@ type Client struct {
 	TCPConn       *net.TCPConn
 	UDPConn       *net.UDPConn
 	RemoteAddress net.Addr
-	TCPDeadline   int
 	TCPTimeout    int
-	UDPDeadline   int
+	UDPTimeout    int
 }
 
 // This is just create a client, you need to use Dial to create conn
-func NewClient(addr, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Client, error) {
+func NewClient(addr, username, password string, tcpTimeout, udpTimeout int) (*Client, error) {
 	c := &Client{
-		Server:      addr,
-		UserName:    username,
-		Password:    password,
-		TCPTimeout:  tcpTimeout,
-		TCPDeadline: tcpDeadline,
-		UDPDeadline: udpDeadline,
+		Server:     addr,
+		UserName:   username,
+		Password:   password,
+		TCPTimeout: tcpTimeout,
+		UDPTimeout: udpTimeout,
 	}
 	return c, nil
 }
 
 func (c *Client) Dial(network, addr string) (net.Conn, error) {
 	c = &Client{
-		Server:      c.Server,
-		UserName:    c.UserName,
-		Password:    c.Password,
-		TCPTimeout:  c.TCPTimeout,
-		TCPDeadline: c.TCPDeadline,
-		UDPDeadline: c.UDPDeadline,
+		Server:     c.Server,
+		UserName:   c.UserName,
+		Password:   c.Password,
+		TCPTimeout: c.TCPTimeout,
+		UDPTimeout: c.UDPTimeout,
 	}
 	if network == "tcp" {
 		var err error
@@ -94,6 +91,11 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
+		if c.UDPTimeout != 0 {
+			if err := c.UDPConn.SetDeadline(time.Now().Add(time.Duration(c.UDPTimeout) * time.Second)); err != nil {
+				return nil, err
+			}
+		}
 		return c, nil
 	}
 	return nil, errors.New("unsupport network")
@@ -101,12 +103,11 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 
 func (c *Client) DialUDP(network, la, ra string) (net.Conn, error) {
 	c = &Client{
-		Server:      c.Server,
-		UserName:    c.UserName,
-		Password:    c.Password,
-		TCPTimeout:  c.TCPTimeout,
-		TCPDeadline: c.TCPDeadline,
-		UDPDeadline: c.UDPDeadline,
+		Server:     c.Server,
+		UserName:   c.UserName,
+		Password:   c.Password,
+		TCPTimeout: c.TCPTimeout,
+		UDPTimeout: c.UDPTimeout,
 	}
 	var err error
 	c.RemoteAddress, err = net.ResolveUDPAddr("udp", ra)
@@ -146,6 +147,11 @@ func (c *Client) DialUDP(network, la, ra string) (net.Conn, error) {
 	c.UDPConn, err = Dial.DialUDP("udp", laddr, raddr)
 	if err != nil {
 		return nil, err
+	}
+	if c.UDPTimeout != 0 {
+		if err := c.UDPConn.SetDeadline(time.Now().Add(time.Duration(c.UDPTimeout) * time.Second)); err != nil {
+			return nil, err
+		}
 	}
 	return c, nil
 }
@@ -242,11 +248,6 @@ func (c *Client) Negotiate() error {
 	}
 	c.TCPConn = con.(*net.TCPConn)
 	if c.TCPTimeout != 0 {
-		if err := c.TCPConn.SetKeepAlivePeriod(time.Duration(c.TCPTimeout) * time.Second); err != nil {
-			return err
-		}
-	}
-	if c.TCPDeadline != 0 {
 		if err := c.TCPConn.SetDeadline(time.Now().Add(time.Duration(c.TCPTimeout) * time.Second)); err != nil {
 			return err
 		}

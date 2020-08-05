@@ -33,9 +33,8 @@ type Server struct {
 	TCPListen         *net.TCPListener
 	UDPConn           *net.UDPConn
 	UDPExchanges      *cache.Cache
-	TCPDeadline       int
 	TCPTimeout        int
-	UDPDeadline       int
+	UDPTimeout        int
 	Handle            Handler
 	AssociatedUDP     *cache.Cache
 	UDPSrc            *cache.Cache
@@ -51,7 +50,7 @@ type UDPExchange struct {
 }
 
 // NewClassicServer return a server which allow none method
-func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Server, error) {
+func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeout int) (*Server, error) {
 	_, p, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -85,8 +84,7 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadli
 		ServerAddr:        saddr,
 		UDPExchanges:      cs,
 		TCPTimeout:        tcpTimeout,
-		TCPDeadline:       tcpDeadline,
-		UDPDeadline:       udpDeadline,
+		UDPTimeout:        udpTimeout,
 		AssociatedUDP:     cs1,
 		UDPSrc:            cs2,
 		RunnerGroup:       runnergroup.New(),
@@ -217,13 +215,7 @@ func (s *Server) RunTCPServer() error {
 		go func(c *net.TCPConn) {
 			defer c.Close()
 			if s.TCPTimeout != 0 {
-				if err := c.SetKeepAlivePeriod(time.Duration(s.TCPTimeout) * time.Second); err != nil {
-					log.Println(err)
-					return
-				}
-			}
-			if s.TCPDeadline != 0 {
-				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
 					log.Println(err)
 					return
 				}
@@ -305,8 +297,8 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		go func() {
 			var bf [1024 * 2]byte
 			for {
-				if s.TCPDeadline != 0 {
-					if err := rc.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+				if s.TCPTimeout != 0 {
+					if err := rc.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
 						return
 					}
 				}
@@ -321,8 +313,8 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		}()
 		var bf [1024 * 2]byte
 		for {
-			if s.TCPDeadline != 0 {
-				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPDeadline) * time.Second)); err != nil {
+			if s.TCPTimeout != 0 {
+				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
 					return nil
 				}
 			}
@@ -438,8 +430,8 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 				}
 				return
 			default:
-				if s.UDPDeadline != 0 {
-					if err := ue.RemoteConn.SetDeadline(time.Now().Add(time.Duration(s.UDPDeadline) * time.Second)); err != nil {
+				if s.UDPTimeout != 0 {
+					if err := ue.RemoteConn.SetDeadline(time.Now().Add(time.Duration(s.UDPTimeout) * time.Second)); err != nil {
 						log.Println(err)
 						return
 					}
