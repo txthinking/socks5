@@ -447,7 +447,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 				if Debug {
 					log.Printf("Got UDP data from remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), b[0:n])
 				}
-				a, addr, port, err := ParseAddress(ue.ClientAddr.String())
+				a, addr, port, err := ParseAddress(dst)
 				if err != nil {
 					log.Println(err)
 					return
