@@ -2,6 +2,7 @@ package socks5
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -35,11 +36,12 @@ type Server struct {
 	TCPDeadline       int
 	TCPTimeout        int
 	UDPDeadline       int
-	UDPSessionTime    int // If client does't send address, use this fixed time
 	Handle            Handler
 	AssociatedUDP     *cache.Cache
 	UDPSrc            *cache.Cache
 	RunnerGroup       *runnergroup.RunnerGroup
+	// RFC: [UDP ASSOCIATE] The server MAY use this information to limit access to the association. Default false, no limit.
+	LimitUDP bool
 }
 
 // UDPExchange used to store client address and remote connection
@@ -49,7 +51,7 @@ type UDPExchange struct {
 }
 
 // NewClassicServer return a server which allow none method
-func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime int) (*Server, error) {
+func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadline, udpDeadline int) (*Server, error) {
 	_, p, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -85,7 +87,6 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, tcpDeadli
 		TCPTimeout:        tcpTimeout,
 		TCPDeadline:       tcpDeadline,
 		UDPDeadline:       udpDeadline,
-		UDPSessionTime:    udpSessionTime,
 		AssociatedUDP:     cs1,
 		UDPSrc:            cs2,
 		RunnerGroup:       runnergroup.New(),
@@ -356,15 +357,18 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 // UDPHandle auto handle packet. You may prefer to do yourself.
 func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) error {
 	src := addr.String()
-	// any, ok := s.AssociatedUDP.Get(src)
-	// if !ok {
-	// return fmt.Errorf("This udp address %s is not associated with tcp", src)
-	// }
-	// ch := any.(chan byte)
+	var ch chan byte
+	if s.LimitUDP {
+		any, ok := s.AssociatedUDP.Get(src)
+		if !ok {
+			return fmt.Errorf("This udp address %s is not associated with tcp", src)
+		}
+		ch = any.(chan byte)
+	}
 	send := func(ue *UDPExchange, data []byte) error {
 		select {
-		// case <-ch:
-		// 	return fmt.Errorf("This udp address %s is not associated with tcp", src)
+		case <-ch:
+			return fmt.Errorf("This udp address %s is not associated with tcp", src)
 		default:
 			_, err := ue.RemoteConn.Write(data)
 			if err != nil {
@@ -428,11 +432,11 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 		var b [65536]byte
 		for {
 			select {
-			// case <-ch:
-			// 	if Debug {
-			// 		log.Printf("The tcp that udp address %s associated closed\n", ue.ClientAddr.String())
-			// 	}
-			// 	return
+			case <-ch:
+				if Debug {
+					log.Printf("The tcp that udp address %s associated closed\n", ue.ClientAddr.String())
+				}
+				return
 			default:
 				if s.UDPDeadline != 0 {
 					if err := ue.RemoteConn.SetDeadline(time.Now().Add(time.Duration(s.UDPDeadline) * time.Second)); err != nil {
