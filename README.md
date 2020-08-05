@@ -62,7 +62,7 @@ $ go get github.com/txthinking/socks5
 Example:
 
 ```
-s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, tcpDeadline, udpDeadline, udpSessionTime)
+s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, tcpDeadline, udpDeadline)
 s.ListenAndServe(Handler)
 ```
 
