@@ -3,6 +3,7 @@ package socks5
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"net"
 	"strconv"
 )
@@ -30,6 +31,50 @@ func ParseAddress(address string) (a byte, addr []byte, port []byte, err error) 
 	i, _ := strconv.Atoi(p)
 	port = make([]byte, 2)
 	binary.BigEndian.PutUint16(port, uint16(i))
+	return
+}
+
+// bytes to address
+// addr contains domain length
+func ParseBytesAddress(b []byte) (a byte, addr []byte, port []byte, err error) {
+	if len(b) < 1 {
+		err = errors.New("Invalid address")
+		return
+	}
+	a = b[0]
+	if a == ATYPIPv4 {
+		if len(b) < 1+4+2 {
+			err = errors.New("Invalid address")
+			return
+		}
+		addr = b[1 : 1+4]
+		port = b[1+4 : 1+4+2]
+		return
+	}
+	if a == ATYPIPv6 {
+		if len(b) < 1+16+2 {
+			err = errors.New("Invalid address")
+			return
+		}
+		addr = b[1 : 1+16]
+		port = b[1+16 : 1+16+2]
+		return
+	}
+	if a == ATYPDomain {
+		if len(b) < 1+1 {
+			err = errors.New("Invalid address")
+			return
+		}
+		l := int(b[1])
+		if len(b) < 1+1+l+2 {
+			err = errors.New("Invalid address")
+			return
+		}
+		addr = b[1 : 1+1+l]
+		port = b[1+1+l : 1+1+l+2]
+		return
+	}
+	err = errors.New("Invalid address")
 	return
 }
 

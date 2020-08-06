@@ -160,17 +160,13 @@ func (c *Client) Read(b []byte) (int, error) {
 	if c.UDPConn == nil {
 		return c.TCPConn.Read(b)
 	}
-	b1 := make([]byte, 65535)
-	n, err := c.UDPConn.Read(b1)
+	n, err := c.UDPConn.Read(b)
 	if err != nil {
 		return 0, err
 	}
-	d, err := NewDatagramFromBytes(b1[0:n])
+	d, err := NewDatagramFromBytes(b[0:n])
 	if err != nil {
 		return 0, err
-	}
-	if len(b) < len(d.Data) {
-		return 0, errors.New("b too small")
 	}
 	n = copy(b, d.Data)
 	return n, nil
