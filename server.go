@@ -246,7 +246,7 @@ func (s *Server) RunUDPServer() error {
 	}
 	defer s.UDPConn.Close()
 	for {
-		b := make([]byte, 65536)
+		b := make([]byte, 65507)
 		n, addr, err := s.UDPConn.ReadFromUDP(b)
 		if err != nil {
 			return err
@@ -421,7 +421,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 			ue.RemoteConn.Close()
 			s.UDPExchanges.Delete(ue.ClientAddr.String() + dst)
 		}()
-		var b [65536]byte
+		var b [65507]byte
 		for {
 			select {
 			case <-ch:
