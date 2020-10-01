@@ -95,8 +95,8 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 // Negotiate handle negotiate packet.
 // This method do not handle gssapi(0x01) method now.
 // Error or OK both replied.
-func (s *Server) Negotiate(c *net.TCPConn) error {
-	rq, err := NewNegotiationRequestFrom(c)
+func (s *Server) Negotiate(rw io.ReadWriter) error {
+	rq, err := NewNegotiationRequestFrom(rw)
 	if err != nil {
 		return err
 	}
@@ -109,29 +109,29 @@ func (s *Server) Negotiate(c *net.TCPConn) error {
 	}
 	if !got {
 		rp := NewNegotiationReply(MethodUnsupportAll)
-		if _, err := rp.WriteTo(c); err != nil {
+		if _, err := rp.WriteTo(rw); err != nil {
 			return err
 		}
 	}
 	rp := NewNegotiationReply(s.Method)
-	if _, err := rp.WriteTo(c); err != nil {
+	if _, err := rp.WriteTo(rw); err != nil {
 		return err
 	}
 
 	if s.Method == MethodUsernamePassword {
-		urq, err := NewUserPassNegotiationRequestFrom(c)
+		urq, err := NewUserPassNegotiationRequestFrom(rw)
 		if err != nil {
 			return err
 		}
 		if string(urq.Uname) != s.UserName || string(urq.Passwd) != s.Password {
 			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
-			if _, err := urp.WriteTo(c); err != nil {
+			if _, err := urp.WriteTo(rw); err != nil {
 				return err
 			}
 			return ErrUserPassAuth
 		}
 		urp := NewUserPassNegotiationReply(UserPassStatusSuccess)
-		if _, err := urp.WriteTo(c); err != nil {
+		if _, err := urp.WriteTo(rw); err != nil {
 			return err
 		}
 	}
@@ -140,8 +140,8 @@ func (s *Server) Negotiate(c *net.TCPConn) error {
 
 // GetRequest get request packet from client, and check command according to SupportedCommands
 // Error replied.
-func (s *Server) GetRequest(c *net.TCPConn) (*Request, error) {
-	r, err := NewRequestFrom(c)
+func (s *Server) GetRequest(rw io.ReadWriter) (*Request, error) {
+	r, err := NewRequestFrom(rw)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *Server) GetRequest(c *net.TCPConn) (*Request, error) {
 		} else {
 			p = NewReply(RepCommandNotSupported, ATYPIPv6, []byte(net.IPv6zero), []byte{0x00, 0x00})
 		}
-		if _, err := p.WriteTo(c); err != nil {
+		if _, err := p.WriteTo(rw); err != nil {
 			return nil, err
 		}
 		return nil, ErrUnsupportCmd
