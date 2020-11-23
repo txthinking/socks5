@@ -1,23 +1,23 @@
 ## socks5
 
-[中文](README_ZH.md)
+[English](README.md)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/txthinking/socks5)](https://goreportcard.com/report/github.com/txthinking/socks5)
 [![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
-[![Donate](https://img.shields.io/badge/Support-Donate-ff69b4.svg)](https://www.txthinking.com/opensource-support.html)
-[![Slack](https://img.shields.io/badge/Join-Slack-ff69b4.svg)](https://docs.google.com/forms/d/e/1FAIpQLSdzMwPtDue3QoezXSKfhW88BXp57wkbDXnLaqokJqLeSWP9vQ/viewform)
+[![捐赠](https://img.shields.io/badge/%E6%94%AF%E6%8C%81-%E6%8D%90%E8%B5%A0-ff69b4.svg)](https://www.txthinking.com/opensource-support.html)
+[![交流群](https://img.shields.io/badge/%E7%94%B3%E8%AF%B7%E5%8A%A0%E5%85%A5-%E4%BA%A4%E6%B5%81%E7%BE%A4-ff69b4.svg)](https://docs.google.com/forms/d/e/1FAIpQLSdzMwPtDue3QoezXSKfhW88BXp57wkbDXnLaqokJqLeSWP9vQ/viewform)
 
 SOCKS Protocol Version 5 Library.
 
-Full TCP/UDP and IPv4/IPv6 support.
-Goals: KISS, less is more, small API, code is like the original protocol.
+完整 TCP/UDP 和 IPv4/IPv6 支持.
+目标: KISS, less is more, small API, code is like the original protocol.
 
-### Install
+### 获取
 ```
 $ go get github.com/txthinking/socks5
 ```
 
-### Struct is like concept in protocol
+### Struct的概念 对标 原始协议里的概念
 
 * Negotiation:
     * `type NegotiationRequest struct`
@@ -54,36 +54,36 @@ $ go get github.com/txthinking/socks5
         * `func NewDatagramFromBytes(bb []byte)`
         * `func (d *Datagram) Bytes()`
 
-### Advanced API
+### 高级 API
 
-**Server**. You can process client's request by yourself after reading **Request** from client. Also, here is a advanced interfaces.
+**Server**. 你可以自己处理client请求在读取**Request**后. 同时, 这里有一个高级接口
 
 * `type Server struct`
 * `type Handler interface`
     * `TCPHandle(*Server, *net.TCPConn, *Request) error`
     * `UDPHandle(*Server, *net.UDPAddr, *Datagram) error`
 
-Example:
+举例:
 
 ```
 s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, udpTimeout)
 s.ListenAndServe(Handler)
 ```
 
-* If you want a standard socks5 server, pass in nil
-* If you want to handle data by yourself, pass in a custom Handler
+* 如果你想要一个标准socks5 server, 传入nil即可
+* 如果你想要自己处理请求, 传入一个你自己的Handler
 
-**Client**. Here is a client support both TCP and UDP and return net.Conn.
+**Client**. 这里有个socks5 client, 支持TCP和UDP, 返回net.Conn.
 
 * `type Client struct`
 
-Example:
+举例:
 
 ```
 c, _ := socks5.NewClient(server, username, password, tcpTimeout, udpTimeout)
 conn, _ := c.Dial(network, addr)
 ```
 
-### Users:
+### 用户:
 
  * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
