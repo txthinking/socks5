@@ -1,8 +1,10 @@
 package socks5
 
 import (
+	"encoding/binary"
 	"errors"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -114,7 +116,15 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		raddr, err := net.ResolveUDPAddr("udp", rp.Address())
+		var addr string
+		if IsAnyIP(rp.BndAddr) {
+			// indicate using conventional addr
+			p := strconv.Itoa(int(binary.BigEndian.Uint16(rp.BndPort)))
+			addr = net.JoinHostPort(laddr.IP.String(), p)
+		} else {
+			addr = rp.Address()
+		}
+		raddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return nil, err
 		}

@@ -78,6 +78,18 @@ func ParseBytesAddress(b []byte) (a byte, addr []byte, port []byte, err error) {
 	return
 }
 
+// IsAnyIP return if the given ip address is an any ip (0.0.0.0 or [::])
+func IsAnyIP(b []byte) bool {
+	switch len(b) {
+	case net.IPv4len:
+		return bytes.Equal(b, AnyIP)
+	case net.IPv6len:
+		return bytes.Equal(b, AnyIPv6)
+	default:
+		return false
+	}
+}
+
 // ToAddress format raw address to x.x.x.x:xx
 // addr contains domain length
 func ToAddress(a byte, addr []byte, port []byte) string {
