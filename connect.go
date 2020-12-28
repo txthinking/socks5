@@ -8,7 +8,7 @@ import (
 
 // Connect remote conn which u want to connect with your dialer
 // Error or OK both replied.
-func (r *Request) Connect(w io.Writer) (*net.TCPConn, error) {
+func (r *Request) Connect(w io.Writer) (net.Conn, error) {
 	if Debug {
 		log.Println("Call:", r.Address())
 	}
@@ -25,7 +25,7 @@ func (r *Request) Connect(w io.Writer) (*net.TCPConn, error) {
 		}
 		return nil, err
 	}
-	rc := tmp.(*net.TCPConn)
+	rc := tmp.(net.Conn)
 
 	a, addr, port, err := ParseAddress(rc.LocalAddr().String())
 	if err != nil {

@@ -31,7 +31,7 @@ type Server struct {
 	UDPAddr           *net.UDPAddr
 	ServerAddr        *net.UDPAddr
 	TCPListen         *net.TCPListener
-	UDPConn           *net.UDPConn
+	PacketConn        net.PacketConn
 	UDPExchanges      *cache.Cache
 	TCPTimeout        int
 	UDPTimeout        int
@@ -46,7 +46,7 @@ type Server struct {
 // UDPExchange used to store client address and remote connection
 type UDPExchange struct {
 	ClientAddr *net.UDPAddr
-	RemoteConn *net.UDPConn
+	RemoteConn net.PacketConn
 }
 
 // NewClassicServer return a server which allow none method
@@ -190,8 +190,8 @@ func (s *Server) ListenAndServe(h Handler) error {
 			return s.RunUDPServer()
 		},
 		Stop: func() error {
-			if s.UDPConn != nil {
-				return s.UDPConn.Close()
+			if s.PacketConn != nil {
+				return s.PacketConn.Close()
 			}
 			return nil
 		},
@@ -212,7 +212,7 @@ func (s *Server) RunTCPServer() error {
 		if err != nil {
 			return err
 		}
-		go func(c *net.TCPConn) {
+		go func(c net.Conn) {
 			defer c.Close()
 			if s.TCPTimeout != 0 {
 				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
@@ -240,14 +240,14 @@ func (s *Server) RunTCPServer() error {
 // RunUDPServer starts udp server
 func (s *Server) RunUDPServer() error {
 	var err error
-	s.UDPConn, err = net.ListenUDP("udp", s.UDPAddr)
+	s.PacketConn, err = net.ListenUDP("udp", s.UDPAddr)
 	if err != nil {
 		return err
 	}
-	defer s.UDPConn.Close()
+	defer s.PacketConn.Close()
 	for {
 		b := make([]byte, 65507)
-		n, addr, err := s.UDPConn.ReadFromUDP(b)
+		n, addr, err := s.PacketConn.ReadFrom(b)
 		if err != nil {
 			return err
 		}
@@ -265,7 +265,7 @@ func (s *Server) RunUDPServer() error {
 				log.Println(err)
 				return
 			}
-		}(addr, b[0:n])
+		}(addr.(*net.UDPAddr), b[0:n])
 	}
 	return nil
 }
@@ -278,7 +278,7 @@ func (s *Server) Shutdown() error {
 // Handler handle tcp, udp request
 type Handler interface {
 	// Request has not been replied yet
-	TCPHandle(*Server, *net.TCPConn, *Request) error
+	TCPHandle(*Server, net.Conn, *Request) error
 	UDPHandle(*Server, *net.UDPAddr, *Datagram) error
 }
 
@@ -287,7 +287,7 @@ type DefaultHandle struct {
 }
 
 // TCPHandle auto handle request. You may prefer to do yourself.
-func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
+func (h *DefaultHandle) TCPHandle(s *Server, c net.Conn, r *Request) error {
 	if r.Cmd == CmdConnect {
 		rc, err := r.Connect(c)
 		if err != nil {
@@ -362,12 +362,12 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 		case <-ch:
 			return fmt.Errorf("This udp address %s is not associated with tcp", src)
 		default:
-			_, err := ue.RemoteConn.Write(data)
+			_, err := ue.RemoteConn.WriteTo(data, addr)
 			if err != nil {
 				return err
 			}
 			if Debug {
-				log.Printf("Sent UDP data to remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), data)
+				log.Printf("Sent UDP data to remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), addr.String(), data)
 			}
 		}
 		return nil
@@ -436,12 +436,12 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 						return
 					}
 				}
-				n, err := ue.RemoteConn.Read(b[:])
+				n, raddr, err := ue.RemoteConn.ReadFrom(b[:])
 				if err != nil {
 					return
 				}
 				if Debug {
-					log.Printf("Got UDP data from remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), b[0:n])
+					log.Printf("Got UDP data from remote. client: %#v server: %#v remote: %#v data: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), raddr.String(), b[0:n])
 				}
 				a, addr, port, err := ParseAddress(dst)
 				if err != nil {
@@ -449,11 +449,11 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 					return
 				}
 				d1 := NewDatagram(a, addr, port, b[0:n])
-				if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), ue.ClientAddr); err != nil {
+				if _, err := s.PacketConn.WriteTo(d1.Bytes(), ue.ClientAddr); err != nil {
 					return
 				}
 				if Debug {
-					log.Printf("Sent Datagram. client: %#v server: %#v remote: %#v data: %#v %#v %#v %#v %#v %#v datagram address: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), ue.RemoteConn.RemoteAddr().String(), d1.Rsv, d1.Frag, d1.Atyp, d1.DstAddr, d1.DstPort, d1.Data, d1.Address())
+					log.Printf("Sent Datagram. client: %#v server: %#v remote: %#v data: %#v %#v %#v %#v %#v %#v datagram address: %#v\n", ue.ClientAddr.String(), ue.RemoteConn.LocalAddr().String(), raddr.String(), d1.Rsv, d1.Frag, d1.Atyp, d1.DstAddr, d1.DstPort, d1.Data, d1.Address())
 				}
 			}
 		}

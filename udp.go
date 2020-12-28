@@ -9,7 +9,7 @@ import (
 // UDP remote conn which u want to connect with your dialer.
 // Error or OK both replied.
 // Addr can be used to associate TCP connection with the coming UDP connection.
-func (r *Request) UDP(c *net.TCPConn, serverAddr *net.UDPAddr) (*net.UDPAddr, error) {
+func (r *Request) UDP(c net.Conn, serverAddr *net.UDPAddr) (*net.UDPAddr, error) {
 	var clientAddr *net.UDPAddr
 	var err error
 	if bytes.Compare(r.DstPort, []byte{0x00, 0x00}) == 0 {

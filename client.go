@@ -12,8 +12,8 @@ type Client struct {
 	UserName string
 	Password string
 	// On cmd UDP, let server control the tcp and udp connection relationship
-	TCPConn       *net.TCPConn
-	UDPConn       *net.UDPConn
+	Conn          net.Conn
+	PacketConn    net.PacketConn
 	RemoteAddress net.Addr
 	TCPTimeout    int
 	UDPTimeout    int
@@ -101,9 +101,9 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		}
 		if src == "" {
 			laddr = &net.UDPAddr{
-				IP:   c.TCPConn.LocalAddr().(*net.TCPAddr).IP,
-				Port: c.TCPConn.LocalAddr().(*net.TCPAddr).Port,
-				Zone: c.TCPConn.LocalAddr().(*net.TCPAddr).Zone,
+				IP:   c.Conn.LocalAddr().(*net.TCPAddr).IP,
+				Port: c.Conn.LocalAddr().(*net.TCPAddr).Port,
+				Zone: c.Conn.LocalAddr().(*net.TCPAddr).Zone,
 			}
 		}
 		a, h, p, err := ParseAddress(laddr.String())
@@ -118,12 +118,12 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		c.UDPConn, err = Dial.DialUDP("udp", laddr, raddr)
+		c.PacketConn, err = Dial.DialUDP("udp", laddr, raddr)
 		if err != nil {
 			return nil, err
 		}
 		if c.UDPTimeout != 0 {
-			if err := c.UDPConn.SetDeadline(time.Now().Add(time.Duration(c.UDPTimeout) * time.Second)); err != nil {
+			if err := c.PacketConn.SetDeadline(time.Now().Add(time.Duration(c.UDPTimeout) * time.Second)); err != nil {
 				return nil, err
 			}
 		}
@@ -133,10 +133,10 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 }
 
 func (c *Client) Read(b []byte) (int, error) {
-	if c.UDPConn == nil {
-		return c.TCPConn.Read(b)
+	if c.PacketConn == nil {
+		return c.Conn.Read(b)
 	}
-	n, err := c.UDPConn.Read(b)
+	n, _, err := c.PacketConn.ReadFrom(b)
 	if err != nil {
 		return 0, err
 	}
@@ -149,8 +149,8 @@ func (c *Client) Read(b []byte) (int, error) {
 }
 
 func (c *Client) Write(b []byte) (int, error) {
-	if c.UDPConn == nil {
-		return c.TCPConn.Write(b)
+	if c.PacketConn == nil {
+		return c.Conn.Write(b)
 	}
 	a, h, p, err := ParseAddress(c.RemoteAddress.String())
 	if err != nil {
@@ -161,7 +161,7 @@ func (c *Client) Write(b []byte) (int, error) {
 	}
 	d := NewDatagram(a, h, p, b)
 	b1 := d.Bytes()
-	n, err := c.UDPConn.Write(b1)
+	n, err := c.PacketConn.WriteTo(b1, c.RemoteAddress)
 	if err != nil {
 		return 0, err
 	}
@@ -172,20 +172,20 @@ func (c *Client) Write(b []byte) (int, error) {
 }
 
 func (c *Client) Close() error {
-	if c.UDPConn == nil {
-		return c.TCPConn.Close()
+	if c.PacketConn == nil {
+		return c.Conn.Close()
 	}
-	if c.TCPConn != nil {
-		c.TCPConn.Close()
+	if c.Conn != nil {
+		c.Conn.Close()
 	}
-	return c.UDPConn.Close()
+	return c.PacketConn.Close()
 }
 
 func (c *Client) LocalAddr() net.Addr {
-	if c.UDPConn == nil {
-		return c.TCPConn.LocalAddr()
+	if c.PacketConn == nil {
+		return c.Conn.LocalAddr()
 	}
-	return c.UDPConn.LocalAddr()
+	return c.PacketConn.LocalAddr()
 }
 
 func (c *Client) RemoteAddr() net.Addr {
@@ -193,24 +193,24 @@ func (c *Client) RemoteAddr() net.Addr {
 }
 
 func (c *Client) SetDeadline(t time.Time) error {
-	if c.UDPConn == nil {
-		return c.TCPConn.SetDeadline(t)
+	if c.PacketConn == nil {
+		return c.Conn.SetDeadline(t)
 	}
-	return c.UDPConn.SetDeadline(t)
+	return c.PacketConn.SetDeadline(t)
 }
 
 func (c *Client) SetReadDeadline(t time.Time) error {
-	if c.UDPConn == nil {
-		return c.TCPConn.SetReadDeadline(t)
+	if c.PacketConn == nil {
+		return c.Conn.SetReadDeadline(t)
 	}
-	return c.UDPConn.SetReadDeadline(t)
+	return c.PacketConn.SetReadDeadline(t)
 }
 
 func (c *Client) SetWriteDeadline(t time.Time) error {
-	if c.UDPConn == nil {
-		return c.TCPConn.SetWriteDeadline(t)
+	if c.PacketConn == nil {
+		return c.Conn.SetWriteDeadline(t)
 	}
-	return c.UDPConn.SetWriteDeadline(t)
+	return c.PacketConn.SetWriteDeadline(t)
 }
 
 func (c *Client) Negotiate(laddr *net.TCPAddr) error {
@@ -218,12 +218,12 @@ func (c *Client) Negotiate(laddr *net.TCPAddr) error {
 	if err != nil {
 		return err
 	}
-	c.TCPConn, err = Dial.DialTCP("tcp", laddr, raddr)
+	c.Conn, err = Dial.DialTCP("tcp", laddr, raddr)
 	if err != nil {
 		return err
 	}
 	if c.TCPTimeout != 0 {
-		if err := c.TCPConn.SetDeadline(time.Now().Add(time.Duration(c.TCPTimeout) * time.Second)); err != nil {
+		if err := c.Conn.SetDeadline(time.Now().Add(time.Duration(c.TCPTimeout) * time.Second)); err != nil {
 			return err
 		}
 	}
@@ -232,10 +232,10 @@ func (c *Client) Negotiate(laddr *net.TCPAddr) error {
 		m = MethodUsernamePassword
 	}
 	rq := NewNegotiationRequest([]byte{m})
-	if _, err := rq.WriteTo(c.TCPConn); err != nil {
+	if _, err := rq.WriteTo(c.Conn); err != nil {
 		return err
 	}
-	rp, err := NewNegotiationReplyFrom(c.TCPConn)
+	rp, err := NewNegotiationReplyFrom(c.Conn)
 	if err != nil {
 		return err
 	}
@@ -244,10 +244,10 @@ func (c *Client) Negotiate(laddr *net.TCPAddr) error {
 	}
 	if m == MethodUsernamePassword {
 		urq := NewUserPassNegotiationRequest([]byte(c.UserName), []byte(c.Password))
-		if _, err := urq.WriteTo(c.TCPConn); err != nil {
+		if _, err := urq.WriteTo(c.Conn); err != nil {
 			return err
 		}
-		urp, err := NewUserPassNegotiationReplyFrom(c.TCPConn)
+		urp, err := NewUserPassNegotiationReplyFrom(c.Conn)
 		if err != nil {
 			return err
 		}
@@ -259,10 +259,10 @@ func (c *Client) Negotiate(laddr *net.TCPAddr) error {
 }
 
 func (c *Client) Request(r *Request) (*Reply, error) {
-	if _, err := r.WriteTo(c.TCPConn); err != nil {
+	if _, err := r.WriteTo(c.Conn); err != nil {
 		return nil, err
 	}
-	rp, err := NewReplyFrom(c.TCPConn)
+	rp, err := NewReplyFrom(c.Conn)
 	if err != nil {
 		return nil, err
 	}
