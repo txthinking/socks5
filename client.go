@@ -1,10 +1,8 @@
 package socks5
 
 import (
-	"encoding/binary"
 	"errors"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -19,6 +17,10 @@ type Client struct {
 	RemoteAddress net.Addr
 	TCPTimeout    int
 	UDPTimeout    int
+	// HijackServerUDPAddr can let client control which server UDP address to connect to after sending request,
+	// In most cases, you should ignore this, according to the standard server will return the address in reply,
+	// More: https://github.com/txthinking/socks5/pull/8.
+	HijackServerUDPAddr func(*Reply) (*net.UDPAddr, error)
 }
 
 // This is just create a client, you need to use Dial to create conn
@@ -39,12 +41,13 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 
 func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr) (net.Conn, error) {
 	c = &Client{
-		Server:        c.Server,
-		UserName:      c.UserName,
-		Password:      c.Password,
-		TCPTimeout:    c.TCPTimeout,
-		UDPTimeout:    c.UDPTimeout,
-		RemoteAddress: remoteAddr,
+		Server:              c.Server,
+		UserName:            c.UserName,
+		Password:            c.Password,
+		TCPTimeout:          c.TCPTimeout,
+		UDPTimeout:          c.UDPTimeout,
+		RemoteAddress:       remoteAddr,
+		HijackServerUDPAddr: c.HijackServerUDPAddr,
 	}
 	var err error
 	if network == "tcp" {
@@ -116,17 +119,18 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		var addr string
-		if IsAnyIP(rp.BndAddr) {
-			// indicate using conventional addr
-			p := strconv.Itoa(int(binary.BigEndian.Uint16(rp.BndPort)))
-			addr = net.JoinHostPort(laddr.IP.String(), p)
-		} else {
-			addr = rp.Address()
+		var raddr *net.UDPAddr
+		if c.HijackServerUDPAddr == nil {
+			raddr, err = net.ResolveUDPAddr("udp", rp.Address())
+			if err != nil {
+				return nil, err
+			}
 		}
-		raddr, err := net.ResolveUDPAddr("udp", addr)
-		if err != nil {
-			return nil, err
+		if c.HijackServerUDPAddr != nil {
+			raddr, err = c.HijackServerUDPAddr(rp)
+			if err != nil {
+				return nil, err
+			}
 		}
 		c.UDPConn, err = Dial.DialUDP("udp", laddr, raddr)
 		if err != nil {

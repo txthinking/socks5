@@ -11,7 +11,7 @@ import (
 )
 
 func ExampleServer() {
-	s, err := socks5.NewClassicServer("127.0.0.1:1081", "127.0.0.1", "", "", 0, 60)
+	s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1", "", "", 0, 60)
 	if err != nil {
 		panic(err)
 	}
@@ -21,7 +21,7 @@ func ExampleServer() {
 }
 
 func ExampleClient_tcp() {
-	c, err := socks5.NewClient("127.0.0.1:1081", "", "", 0, 60)
+	c, err := socks5.NewClient("127.0.0.1:1080", "", "", 0, 60)
 	if err != nil {
 		panic(err)
 	}
@@ -42,11 +42,11 @@ func ExampleClient_tcp() {
 		panic(err)
 	}
 	log.Println(string(b))
-	// #Output:
+	// Output:
 }
 
 func ExampleClient_udp() {
-	c, err := socks5.NewClient("127.0.0.1:1081", "", "", 0, 60)
+	c, err := socks5.NewClient("127.0.0.1:1080", "", "", 0, 60)
 	if err != nil {
 		panic(err)
 	}
@@ -69,5 +69,5 @@ func ExampleClient_udp() {
 	b = b[:n]
 	b = b[len(b)-4:]
 	log.Println(net.IPv4(b[0], b[1], b[2], b[3]))
-	// #Output:
+	// Output:
 }

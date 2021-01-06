@@ -54,13 +54,6 @@ const (
 	RepAddressNotSupported byte = 0x08
 )
 
-var (
-	// AnyIP is a constant value for any IP in IPv4.
-	AnyIP = []byte{0, 0, 0, 0}
-	// AnyIPv6 is a constant value for any IP in IPv6.
-	AnyIPv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-)
-
 // NegotiationRequest is the negotiation reqeust packet
 type NegotiationRequest struct {
 	Ver      byte
