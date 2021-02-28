@@ -52,7 +52,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 				return nil, err
 			}
 		}
-		var la *net.TCPAddr
+		var la net.Addr
 		if src != "" {
 			la, err = net.ResolveTCPAddr("tcp", src)
 			if err != nil {
@@ -81,7 +81,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 				return nil, err
 			}
 		}
-		var la *net.TCPAddr
+		var la net.Addr
 		if src != "" {
 			la, err = net.ResolveTCPAddr("tcp", src)
 			if err != nil {
@@ -92,7 +92,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 			return nil, err
 		}
 
-		var laddr *net.UDPAddr
+		var laddr net.Addr
 		if src != "" {
 			laddr, err = net.ResolveUDPAddr("udp", src)
 			if err != nil {
@@ -101,9 +101,9 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		}
 		if src == "" {
 			laddr = &net.UDPAddr{
-				IP:   c.Conn.LocalAddr().(*net.TCPAddr).IP,
-				Port: c.Conn.LocalAddr().(*net.TCPAddr).Port,
-				Zone: c.Conn.LocalAddr().(*net.TCPAddr).Zone,
+				IP:   c.Conn.LocalAddr().(*net.UDPAddr).IP,
+				Port: c.Conn.LocalAddr().(*net.UDPAddr).Port,
+				Zone: c.Conn.LocalAddr().(*net.UDPAddr).Zone,
 			}
 		}
 		a, h, p, err := ParseAddress(laddr.String())
@@ -118,7 +118,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		c.PacketConn, err = Dial.DialUDP("udp", laddr, raddr)
+		c.PacketConn, err = Dial.DialUDP("udp", laddr.(*net.UDPAddr), raddr)
 		if err != nil {
 			return nil, err
 		}
@@ -213,12 +213,12 @@ func (c *Client) SetWriteDeadline(t time.Time) error {
 	return c.PacketConn.SetWriteDeadline(t)
 }
 
-func (c *Client) Negotiate(laddr *net.TCPAddr) error {
+func (c *Client) Negotiate(laddr net.Addr) error {
 	raddr, err := net.ResolveTCPAddr("tcp", c.Server)
 	if err != nil {
 		return err
 	}
-	c.Conn, err = Dial.DialTCP("tcp", laddr, raddr)
+	c.Conn, err = Dial.DialTCP("tcp", laddr.(*net.TCPAddr), raddr)
 	if err != nil {
 		return err
 	}

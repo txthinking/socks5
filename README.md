@@ -61,7 +61,7 @@ $ go get github.com/txthinking/socks5
 * `type Server struct`
 * `type Handler interface`
     * `TCPHandle(*Server, *net.TCPConn, *Request) error`
-    * `UDPHandle(*Server, *net.UDPAddr, *Datagram) error`
+    * `UDPHandle(*Server, net.Addr, *Datagram) error`
 
 Example:
 

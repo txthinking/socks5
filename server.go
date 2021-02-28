@@ -27,10 +27,10 @@ type Server struct {
 	Password          string
 	Method            byte
 	SupportedCommands []byte
-	TCPAddr           *net.TCPAddr
-	UDPAddr           *net.UDPAddr
-	ServerAddr        *net.UDPAddr
-	TCPListen         *net.TCPListener
+	TCPAddr           net.Addr
+	UDPAddr           net.Addr
+	ServerAddr        net.Addr
+	TCPListen         net.Listener
 	PacketConn        net.PacketConn
 	UDPExchanges      *cache.Cache
 	TCPTimeout        int
@@ -45,7 +45,7 @@ type Server struct {
 
 // UDPExchange used to store client address and remote connection
 type UDPExchange struct {
-	ClientAddr *net.UDPAddr
+	ClientAddr net.Addr
 	RemoteConn net.PacketConn
 }
 
@@ -202,13 +202,13 @@ func (s *Server) ListenAndServe(h Handler) error {
 // RunTCPServer starts tcp server
 func (s *Server) RunTCPServer() error {
 	var err error
-	s.TCPListen, err = net.ListenTCP("tcp", s.TCPAddr)
+	s.TCPListen, err = net.Listen("tcp", s.TCPAddr.String())
 	if err != nil {
 		return err
 	}
 	defer s.TCPListen.Close()
 	for {
-		c, err := s.TCPListen.AcceptTCP()
+		c, err := s.TCPListen.Accept()
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func (s *Server) RunTCPServer() error {
 // RunUDPServer starts udp server
 func (s *Server) RunUDPServer() error {
 	var err error
-	s.PacketConn, err = net.ListenUDP("udp", s.UDPAddr)
+	s.PacketConn, err = net.ListenUDP("udp", s.UDPAddr.(*net.UDPAddr))
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (s *Server) RunUDPServer() error {
 		if err != nil {
 			return err
 		}
-		go func(addr *net.UDPAddr, b []byte) {
+		go func(addr net.Addr, b []byte) {
 			d, err := NewDatagramFromBytes(b)
 			if err != nil {
 				log.Println(err)
@@ -265,7 +265,7 @@ func (s *Server) RunUDPServer() error {
 				log.Println(err)
 				return
 			}
-		}(addr.(*net.UDPAddr), b[0:n])
+		}(addr, b[0:n])
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func (s *Server) Shutdown() error {
 type Handler interface {
 	// Request has not been replied yet
 	TCPHandle(*Server, net.Conn, *Request) error
-	UDPHandle(*Server, *net.UDPAddr, *Datagram) error
+	UDPHandle(*Server, net.Addr, *Datagram) error
 }
 
 // DefaultHandle implements Handler interface
@@ -347,7 +347,7 @@ func (h *DefaultHandle) TCPHandle(s *Server, c net.Conn, r *Request) error {
 }
 
 // UDPHandle auto handle packet. You may prefer to do yourself.
-func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) error {
+func (h *DefaultHandle) UDPHandle(s *Server, addr net.Addr, d *Datagram) error {
 	src := addr.String()
 	var ch chan byte
 	if s.LimitUDP {
@@ -384,16 +384,16 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	if Debug {
 		log.Printf("Call udp: %#v\n", dst)
 	}
-	var laddr *net.UDPAddr
+	var laddr net.Addr
 	any, ok := s.UDPSrc.Get(src + dst)
 	if ok {
-		laddr = any.(*net.UDPAddr)
+		laddr = any.(net.Addr)
 	}
 	raddr, err := net.ResolveUDPAddr("udp", dst)
 	if err != nil {
 		return err
 	}
-	rc, err := Dial.DialUDP("udp", laddr, raddr)
+	rc, err := Dial.DialUDP("udp", laddr.(*net.UDPAddr), raddr)
 	if err != nil {
 		if strings.Contains(err.Error(), "address already in use") {
 			// we dont choose lock, so ignore this error
@@ -402,7 +402,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 		return err
 	}
 	if laddr == nil {
-		s.UDPSrc.Set(src+dst, rc.LocalAddr().(*net.UDPAddr), -1)
+		s.UDPSrc.Set(src+dst, rc.LocalAddr(), -1)
 	}
 	ue = &UDPExchange{
 		ClientAddr: addr,
