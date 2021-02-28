@@ -47,14 +47,14 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 	var err error
 	if network == "tcp" {
 		if c.RemoteAddress == nil {
-			c.RemoteAddress, err = net.ResolveTCPAddr("tcp", dst)
+			c.RemoteAddress, err = Resolver.ResolveTCPAddr("tcp", dst)
 			if err != nil {
 				return nil, err
 			}
 		}
 		var la net.Addr
 		if src != "" {
-			la, err = net.ResolveTCPAddr("tcp", src)
+			la, err = Resolver.ResolveTCPAddr("tcp", src)
 			if err != nil {
 				return nil, err
 			}
@@ -76,14 +76,14 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 	}
 	if network == "udp" {
 		if c.RemoteAddress == nil {
-			c.RemoteAddress, err = net.ResolveUDPAddr("udp", dst)
+			c.RemoteAddress, err = Resolver.ResolveUDPAddr("udp", dst)
 			if err != nil {
 				return nil, err
 			}
 		}
 		var la net.Addr
 		if src != "" {
-			la, err = net.ResolveTCPAddr("tcp", src)
+			la, err = Resolver.ResolveTCPAddr("tcp", src)
 			if err != nil {
 				return nil, err
 			}
@@ -94,7 +94,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 
 		var laddr net.Addr
 		if src != "" {
-			laddr, err = net.ResolveUDPAddr("udp", src)
+			laddr, err = Resolver.ResolveUDPAddr("udp", src)
 			if err != nil {
 				return nil, err
 			}
@@ -114,7 +114,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		raddr, err := net.ResolveUDPAddr("udp", rp.Address())
+		raddr, err := Resolver.ResolveUDPAddr("udp", rp.Address())
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +214,7 @@ func (c *Client) SetWriteDeadline(t time.Time) error {
 }
 
 func (c *Client) Negotiate(laddr net.Addr) error {
-	raddr, err := net.ResolveTCPAddr("tcp", c.Server)
+	raddr, err := Resolver.ResolveTCPAddr("tcp", c.Server)
 	if err != nil {
 		return err
 	}

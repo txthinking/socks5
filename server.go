@@ -55,15 +55,15 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 	if err != nil {
 		return nil, err
 	}
-	taddr, err := net.ResolveTCPAddr("tcp", addr)
+	taddr, err := Resolver.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	uaddr, err := net.ResolveUDPAddr("udp", addr)
+	uaddr, err := Resolver.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
 	}
-	saddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, p))
+	saddr, err := Resolver.ResolveUDPAddr("udp", net.JoinHostPort(ip, p))
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +389,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr net.Addr, d *Datagram) error {
 	if ok {
 		laddr = any.(net.Addr)
 	}
-	raddr, err := net.ResolveUDPAddr("udp", dst)
+	raddr, err := Resolver.ResolveUDPAddr("udp", dst)
 	if err != nil {
 		return err
 	}
