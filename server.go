@@ -55,15 +55,15 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 	if err != nil {
 		return nil, err
 	}
-	taddr, err := Resolver.ResolveTCPAddr("tcp", addr)
+	taddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	uaddr, err := Resolver.ResolveUDPAddr("udp", addr)
+	uaddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
 	}
-	saddr, err := Resolver.ResolveUDPAddr("udp", net.JoinHostPort(ip, p))
+	saddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, p))
 	if err != nil {
 		return nil, err
 	}
