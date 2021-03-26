@@ -87,3 +87,7 @@ conn, _ := c.Dial(network, addr)
 ### Users:
 
  * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
+
+## Author
+
+A project by [txthinking](https://www.txthinking.com)
