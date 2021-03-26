@@ -87,3 +87,11 @@ conn, _ := c.Dial(network, addr)
 ### 用户:
 
  * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
+
+## 作者
+
+A project by [txthinking](https://www.txthinking.com)
+
+## 开源协议
+
+基于 MIT 协议开源
