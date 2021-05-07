@@ -191,22 +191,24 @@ func NewReply(rep byte, atyp byte, bndaddr []byte, bndport []byte) *Reply {
 
 // WriteTo write reply packet into client
 func (r *Reply) WriteTo(w io.Writer) (int64, error) {
+
+	ret := []byte{r.Ver, r.Rep, r.Rsv, r.Atyp}
+
+	ret = append(ret,
+		r.BndAddr[0],
+		r.BndAddr[1],
+		r.BndAddr[2],
+		r.BndAddr[3],
+		r.BndPort[0],
+		r.BndPort[1])
+
 	var n int
-	i, err := w.Write([]byte{r.Ver, r.Rep, r.Rsv, r.Atyp})
+	i, err := w.Write(ret)
 	n = n + i
 	if err != nil {
 		return int64(n), err
 	}
-	i, err = w.Write(r.BndAddr)
-	n = n + i
-	if err != nil {
-		return int64(n), err
-	}
-	i, err = w.Write(r.BndPort)
-	n = n + i
-	if err != nil {
-		return int64(n), err
-	}
+
 	if Debug {
 		log.Printf("Sent Reply: %#v %#v %#v %#v %#v %#v\n", r.Ver, r.Rep, r.Rsv, r.Atyp, r.BndAddr, r.BndPort)
 	}
