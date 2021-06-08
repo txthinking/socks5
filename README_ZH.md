@@ -12,6 +12,8 @@ SOCKS Protocol Version 5 Library.
 完整 TCP/UDP 和 IPv4/IPv6 支持.
 目标: KISS, less is more, small API, code is like the original protocol.
 
+❤️ A project by [txthinking.com](https://www.txthinking.com)
+
 ### 获取
 ```
 $ go get github.com/txthinking/socks5
@@ -87,10 +89,7 @@ conn, _ := c.Dial(network, addr)
 ### 用户:
 
  * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
-
-## 作者
-
-A project by [txthinking](https://www.txthinking.com)
+ * Shiliew [https://www.shiliew.com](https://www.shiliew.com)
 
 ## 开源协议
 
