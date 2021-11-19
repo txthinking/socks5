@@ -37,7 +37,6 @@ type Server struct {
 	UDPTimeout        int
 	Handle            Handler
 	AssociatedUDP     *cache.Cache
-	UDPSrc            *cache.Cache
 	RunnerGroup       *runnergroup.RunnerGroup
 	// RFC: [UDP ASSOCIATE] The server MAY use this information to limit access to the association. Default false, no limit.
 	LimitUDP bool
@@ -73,7 +72,6 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 	}
 	cs := cache.New(cache.NoExpiration, cache.NoExpiration)
 	cs1 := cache.New(cache.NoExpiration, cache.NoExpiration)
-	cs2 := cache.New(cache.NoExpiration, cache.NoExpiration)
 	s := &Server{
 		Method:            m,
 		UserName:          username,
@@ -86,7 +84,6 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 		TCPTimeout:        tcpTimeout,
 		UDPTimeout:        udpTimeout,
 		AssociatedUDP:     cs1,
-		UDPSrc:            cs2,
 		RunnerGroup:       runnergroup.New(),
 	}
 	return s, nil
@@ -378,31 +375,25 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	iue, ok := s.UDPExchanges.Get(src + dst)
 	if ok {
 		ue = iue.(*UDPExchange)
-		return send(ue, d.Data)
+		err := send(ue, d.Data)
+		if err == nil {
+			return nil
+		}
+		if !strings.Contains(err.Error(), "closed") {
+			return err
+		}
 	}
 
 	if Debug {
 		log.Printf("Call udp: %#v\n", dst)
 	}
-	var laddr *net.UDPAddr
-	any, ok := s.UDPSrc.Get(src + dst)
-	if ok {
-		laddr = any.(*net.UDPAddr)
-	}
 	raddr, err := net.ResolveUDPAddr("udp", dst)
 	if err != nil {
 		return err
 	}
-	rc, err := Dial.DialUDP("udp", laddr, raddr)
+	rc, err := Dial.DialUDP("udp", nil, raddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "address already in use") {
-			// we dont choose lock, so ignore this error
-			return nil
-		}
 		return err
-	}
-	if laddr == nil {
-		s.UDPSrc.Set(src+dst, rc.LocalAddr().(*net.UDPAddr), -1)
 	}
 	ue = &UDPExchange{
 		ClientAddr: addr,
