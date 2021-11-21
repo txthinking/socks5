@@ -395,10 +395,6 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	}
 	rc, err := Dial.DialUDP("udp", laddr, raddr)
 	if err != nil {
-		if strings.Contains(err.Error(), "address already in use") {
-			// we dont choose lock, so ignore this error
-			return nil
-		}
 		return err
 	}
 	if laddr == nil {
