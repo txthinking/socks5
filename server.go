@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
-	"strings"
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
