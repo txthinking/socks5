@@ -4,8 +4,11 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/txthinking/socks5)](https://goreportcard.com/report/github.com/txthinking/socks5)
 [![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
-[![Donate](https://img.shields.io/badge/Support-Donate-ff69b4.svg)](https://github.com/sponsors/txthinking)
-[![Slack](https://img.shields.io/badge/Join-Slack-ff69b4.svg)](https://docs.google.com/forms/d/e/1FAIpQLSdzMwPtDue3QoezXSKfhW88BXp57wkbDXnLaqokJqLeSWP9vQ/viewform)
+
+[🗣 Talks](https://t.me/txthinking_talks)
+[💬 Join](https://join.txthinking.com)
+[🩸 Youtube](https://www.youtube.com/txthinking) 
+[❤️ Sponsor](https://github.com/sponsors/txthinking)
 
 SOCKS Protocol Version 5 Library.
 
