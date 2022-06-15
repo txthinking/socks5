@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
@@ -394,7 +395,14 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	}
 	rc, err := Dial.DialUDP("udp", laddr, raddr)
 	if err != nil {
-		return err
+		if !strings.Contains(err.Error(), "address already in use") {
+			return err
+		}
+		rc, err = Dial.DialUDP("udp", nil, raddr)
+		if err != nil {
+			return err
+		}
+		laddr = nil
 	}
 	if laddr == nil {
 		s.UDPSrc.Set(src+dst, rc.LocalAddr().(*net.UDPAddr), -1)
