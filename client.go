@@ -115,6 +115,9 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
+		if a == ATYPDomain {
+			h = h[1:]
+		}
 		rp, err := c.Request(NewRequest(CmdUDP, a, h, p))
 		if err != nil {
 			return nil, err

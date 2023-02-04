@@ -47,6 +47,9 @@ func (r *Request) UDP(c *net.TCPConn, serverAddr *net.UDPAddr) (*net.UDPAddr, er
 		}
 		return nil, err
 	}
+	if a == ATYPDomain {
+		addr = addr[1:]
+	}
 	p := NewReply(RepSuccess, a, addr, port)
 	if _, err := p.WriteTo(c); err != nil {
 		return nil, err

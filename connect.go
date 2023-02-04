@@ -40,6 +40,9 @@ func (r *Request) Connect(w io.Writer) (*net.TCPConn, error) {
 		}
 		return nil, err
 	}
+	if a == ATYPDomain {
+		addr = addr[1:]
+	}
 	p := NewReply(RepSuccess, a, addr, port)
 	if _, err := p.WriteTo(w); err != nil {
 		return nil, err
