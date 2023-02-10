@@ -17,7 +17,7 @@ func ExampleServer() {
 	}
 	// You can pass in custom Handler
 	s.ListenAndServe(nil)
-	// #Output:
+	// Output:
 }
 
 func ExampleClient_tcp() {
@@ -41,7 +41,7 @@ func ExampleClient_tcp() {
 	if err != nil {
 		panic(err)
 	}
-	log.Println(string(b))
+	log.Println("tcp", string(b))
 	// Output:
 }
 
@@ -68,6 +68,6 @@ func ExampleClient_udp() {
 	}
 	b = b[:n]
 	b = b[len(b)-4:]
-	log.Println(net.IPv4(b[0], b[1], b[2], b[3]))
+	log.Println("udp", net.IPv4(b[0], b[1], b[2], b[3]))
 	// Output:
 }

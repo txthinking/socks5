@@ -7,7 +7,7 @@
 
 [🗣 News](https://t.me/txthinking_news)
 [💬 Chat](https://join.txthinking.com)
-[🩸 Youtube](https://www.youtube.com/txthinking) 
+[🩸 Youtube](https://www.youtube.com/txthinking)
 [❤️ Sponsor](https://github.com/sponsors/txthinking)
 
 SOCKS Protocol Version 5 Library.
@@ -61,7 +61,9 @@ $ go get github.com/txthinking/socks5
 
 ### 高级 API
 
-**Server**. 你可以自己处理client请求在读取**Request**后. 同时, 这里有一个高级接口
+> 这可以满足经典场景，特殊场景仍推荐你选择上面的小API来自定义。
+
+**Server**: 支持UDP和TCP
 
 * `type Server struct`
 * `type Handler interface`
@@ -71,22 +73,19 @@ $ go get github.com/txthinking/socks5
 举例:
 
 ```
-s, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, udpTimeout)
-s.ListenAndServe(Handler)
+server, _ := NewClassicServer(addr, ip, username, password, tcpTimeout, udpTimeout)
+server.ListenAndServe(Handler)
 ```
 
-* 如果你想要一个标准socks5 server, 传入nil即可
-* 如果你想要自己处理请求, 传入一个你自己的Handler
-
-**Client**. 这里有个socks5 client, 支持TCP和UDP, 返回net.Conn.
+**Client**: 支持TCP和UDP, 返回net.Conn
 
 * `type Client struct`
 
 举例:
 
 ```
-c, _ := socks5.NewClient(server, username, password, tcpTimeout, udpTimeout)
-conn, _ := c.Dial(network, addr)
+client, _ := socks5.NewClient(server, username, password, tcpTimeout, udpTimeout)
+conn, _ := client.Dial(network, addr)
 ```
 
 ### 用户:
