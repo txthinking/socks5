@@ -54,7 +54,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		}
 		var laddr net.Addr
 		if src != "" {
-			laddr, err = Resolve("tcp", src)
+			laddr, err = net.ResolveTCPAddr("tcp", src)
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +83,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		}
 		var laddr net.Addr
 		if src != "" {
-			laddr, err = Resolve("tcp", src)
+			laddr, err = net.ResolveTCPAddr("tcp", src)
 			if err != nil {
 				return nil, err
 			}

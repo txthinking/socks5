@@ -15,9 +15,9 @@ func (r *Request) UDP(c net.Conn, serverAddr net.Addr) (net.Addr, error) {
 	if bytes.Compare(r.DstPort, []byte{0x00, 0x00}) == 0 {
 		// If the requested Host/Port is all zeros, the relay should simply use the Host/Port that sent the request.
 		// https://stackoverflow.com/questions/62283351/how-to-use-socks-5-proxy-with-tidudpclient-properly
-		clientAddr, err = Resolve("udp", c.RemoteAddr().String())
+		clientAddr, err = net.ResolveUDPAddr("udp", c.RemoteAddr().String())
 	} else {
-		clientAddr, err = Resolve("udp", r.Address())
+		clientAddr, err = net.ResolveUDPAddr("udp", r.Address())
 	}
 	if err != nil {
 		var p *Reply

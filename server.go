@@ -163,11 +163,11 @@ func (s *Server) ListenAndServe(h Handler) error {
 	} else {
 		s.Handle = h
 	}
-	addr, err := Resolve("tcp", s.Addr)
+	addr, err := net.ResolveTCPAddr("tcp", s.Addr)
 	if err != nil {
 		return err
 	}
-	l, err := net.ListenTCP("tcp", addr.(*net.TCPAddr))
+	l, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -200,12 +200,12 @@ func (s *Server) ListenAndServe(h Handler) error {
 			return l.Close()
 		},
 	})
-	addr, err = Resolve("udp", s.Addr)
+	addr1, err := net.ResolveUDPAddr("udp", s.Addr)
 	if err != nil {
 		l.Close()
 		return err
 	}
-	s.UDPConn, err = net.ListenUDP("udp", addr.(*net.UDPAddr))
+	s.UDPConn, err = net.ListenUDP("udp", addr1)
 	if err != nil {
 		l.Close()
 		return err
