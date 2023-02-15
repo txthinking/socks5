@@ -17,6 +17,7 @@ type Client struct {
 	RemoteAddress net.Addr
 	TCPTimeout    int
 	UDPTimeout    int
+	Dst           string
 }
 
 // This is just create a client, you need to use Dial to create conn
@@ -42,16 +43,11 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		Password:      c.Password,
 		TCPTimeout:    c.TCPTimeout,
 		UDPTimeout:    c.UDPTimeout,
+		Dst:           dst,
 		RemoteAddress: remoteAddr,
 	}
 	var err error
 	if network == "tcp" {
-		if c.RemoteAddress == nil {
-			c.RemoteAddress, err = Resolve("tcp", dst)
-			if err != nil {
-				return nil, err
-			}
-		}
 		var laddr net.Addr
 		if src != "" {
 			laddr, err = net.ResolveTCPAddr("tcp", src)
@@ -75,12 +71,6 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		return c, nil
 	}
 	if network == "udp" {
-		if c.RemoteAddress == nil {
-			c.RemoteAddress, err = Resolve("udp", dst)
-			if err != nil {
-				return nil, err
-			}
-		}
 		var laddr net.Addr
 		if src != "" {
 			laddr, err = net.ResolveTCPAddr("tcp", src)
@@ -138,7 +128,7 @@ func (c *Client) Write(b []byte) (int, error) {
 	if c.UDPConn == nil {
 		return c.TCPConn.Write(b)
 	}
-	a, h, p, err := ParseAddress(c.RemoteAddress.String())
+	a, h, p, err := ParseAddress(c.Dst)
 	if err != nil {
 		return 0, err
 	}
