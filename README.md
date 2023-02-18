@@ -6,7 +6,6 @@
 [![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
 
 [🗣 News](https://t.me/txthinking_news)
-[💬 Chat](https://join.txthinking.com)
 [🩸 Youtube](https://www.youtube.com/txthinking)
 [❤️ Sponsor](https://github.com/sponsors/txthinking)
 
@@ -89,10 +88,16 @@ client, _ := socks5.NewClient(server, username, password, tcpTimeout, udpTimeout
 conn, _ := client.Dial(network, addr)
 ```
 
-### Users:
+### Projects using this library
 
--   Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
--   Shiliew [https://www.shiliew.com](https://www.shiliew.com)
+-   Brook: https://github.com/txthinking/brook
+-   Shiliew: https://www.txthinking.com/shiliew.html
+-   dismap: https://github.com/zhzyker/dismap
+-   emp3r0r: https://github.com/jm33-m0/emp3r0r
+-   hysteria: https://github.com/apernet/hysteria
+-   mtg: https://github.com/9seconds/mtg
+-   trojan-go: https://github.com/p4gefau1t/trojan-go
+
 
 ## License
 
