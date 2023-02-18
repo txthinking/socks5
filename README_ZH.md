@@ -6,7 +6,6 @@
 [![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
 
 [🗣 News](https://t.me/txthinking_news)
-[💬 Chat](https://join.txthinking.com)
 [🩸 Youtube](https://www.youtube.com/txthinking)
 [❤️ Sponsor](https://github.com/sponsors/txthinking)
 
@@ -61,7 +60,7 @@ $ go get github.com/txthinking/socks5
 
 ### 高级 API
 
-> 这可以满足经典场景，特殊场景仍推荐你选择上面的小API来自定义。
+> 这可以满足经典场景，特殊场景推荐你选择上面的小API来自定义。
 
 **Server**: 支持UDP和TCP
 
@@ -88,10 +87,16 @@ client, _ := socks5.NewClient(server, username, password, tcpTimeout, udpTimeout
 conn, _ := client.Dial(network, addr)
 ```
 
-### 用户:
 
- * Brook [https://github.com/txthinking/brook](https://github.com/txthinking/brook)
- * Shiliew [https://www.shiliew.com](https://www.shiliew.com)
+### 谁在使用此项目
+
+-   Brook: https://github.com/txthinking/brook
+-   Shiliew: https://www.txthinking.com/shiliew.html
+-   dismap: https://github.com/zhzyker/dismap
+-   emp3r0r: https://github.com/jm33-m0/emp3r0r
+-   hysteria: https://github.com/apernet/hysteria
+-   mtg: https://github.com/9seconds/mtg
+-   trojan-go: https://github.com/p4gefau1t/trojan-go
 
 ## 开源协议
 
