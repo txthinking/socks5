@@ -364,7 +364,7 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	}
 	rc, err := DialUDP("udp", laddr, dst)
 	if err != nil {
-		if !strings.Contains(err.Error(), "address already in use") {
+		if !strings.Contains(err.Error(), "address already in use") && !strings.Contains(err.Error(), "can't assign requested address") {
 			return err
 		}
 		rc, err = DialUDP("udp", "", dst)
