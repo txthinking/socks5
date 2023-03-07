@@ -82,13 +82,15 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 			return nil, err
 		}
 
-		src = c.TCPConn.LocalAddr().String()
-		a, h, p, err := ParseAddress(src)
-		if err != nil {
-			return nil, err
-		}
-		if a == ATYPDomain {
-			h = h[1:]
+		a, h, p := ATYPIPv4, net.IPv4zero, []byte{0x00, 0x00}
+		if src != "" {
+			a, h, p, err = ParseAddress(src)
+			if err != nil {
+				return nil, err
+			}
+			if a == ATYPDomain {
+				h = h[1:]
+			}
 		}
 		rp, err := c.Request(NewRequest(CmdUDP, a, h, p))
 		if err != nil {

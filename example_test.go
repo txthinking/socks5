@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/miekg/dns"
 	"github.com/txthinking/socks5"
 )
 
@@ -77,8 +78,11 @@ func ExampleClient_udp() {
 		log.Println(err)
 		return
 	}
-	b = b[:n]
-	b = b[len(b)-4:]
-	log.Println("udp", net.IPv4(b[0], b[1], b[2], b[3]))
+	m := &dns.Msg{}
+	if err := m.Unpack(b[0:n]); err != nil {
+		log.Println(err)
+		return
+	}
+	log.Println(m.String())
 	// Output:
 }
