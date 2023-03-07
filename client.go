@@ -36,6 +36,8 @@ func (c *Client) Dial(network, addr string) (net.Conn, error) {
 	return c.DialWithLocalAddr(network, "", addr, nil)
 }
 
+// If you want to send address that expects to use to send UDP, just assign it to src, otherwise it will send zero address.
+// Recommend specifying the src address in a non-NAT environment, and leave it blank in other cases.
 func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr) (net.Conn, error) {
 	c = &Client{
 		Server:        c.Server,
