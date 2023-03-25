@@ -5,9 +5,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/txthinking/socks5)](https://goreportcard.com/report/github.com/txthinking/socks5)
 [![GoDoc](https://godoc.org/github.com/txthinking/socks5?status.svg)](https://godoc.org/github.com/txthinking/socks5)
 
-[🗣 News](https://t.me/txthinking_news)
+[🗣 News](https://t.me/s/txthinking_news)
 [🩸 Youtube](https://www.youtube.com/txthinking)
-[❤️ Sponsor](https://github.com/sponsors/txthinking)
 
 SOCKS Protocol Version 5 Library.
 
