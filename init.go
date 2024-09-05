@@ -1,7 +1,9 @@
 package socks5
 
 import (
+	"context"
 	"net"
+	"strconv"
 )
 
 var Debug bool
@@ -9,15 +11,48 @@ var Debug bool
 func init() {
 	// log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
+func CustomResolver(r *net.Resolver, addr string) (net.Addr, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ipAddrs, err := r.LookupIPAddr(context.Background(), host)
+	if err != nil {
+		return nil, err
+	}
 
-var Resolve func(network string, addr string) (net.Addr, error) = func(network string, addr string) (net.Addr, error) {
+	if len(ipAddrs) == 0 {
+		return nil, err
+	}
+
+	// Use the first resolved IP address
+	ipAddr := ipAddrs[0]
+	tcpAddr := &net.TCPAddr{
+		IP: ipAddr.IP,
+		Port: func() int {
+			intPort, err := strconv.Atoi(port)
+			if err != nil {
+				p, _ := net.LookupPort("tcp", port)
+				return p
+			}
+			return intPort
+		}(),
+	}
+	return tcpAddr, nil
+
+}
+
+var Resolve func(s *Server, network string, addr string) (net.Addr, error) = func(s *Server, network string, addr string) (net.Addr, error) {
 	if network == "tcp" {
+		if s != nil && s.Resolver != nil {
+			return CustomResolver(s.Resolver, addr)
+		}
 		return net.ResolveTCPAddr("tcp", addr)
 	}
 	return net.ResolveUDPAddr("udp", addr)
 }
 
-var DialTCP func(network string, laddr, raddr string) (net.Conn, error) = func(network string, laddr, raddr string) (net.Conn, error) {
+var DialTCP func(s *Server, network string, laddr, raddr string) (net.Conn, error) = func(s *Server, network string, laddr, raddr string) (net.Conn, error) {
 	var la, ra *net.TCPAddr
 	if laddr != "" {
 		var err error
@@ -26,7 +61,7 @@ var DialTCP func(network string, laddr, raddr string) (net.Conn, error) = func(n
 			return nil, err
 		}
 	}
-	a, err := Resolve(network, raddr)
+	a, err := Resolve(s, network, raddr)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +69,7 @@ var DialTCP func(network string, laddr, raddr string) (net.Conn, error) = func(n
 	return net.DialTCP(network, la, ra)
 }
 
-var DialUDP func(network string, laddr, raddr string) (net.Conn, error) = func(network string, laddr, raddr string) (net.Conn, error) {
+var DialUDP func(s *Server, network string, laddr, raddr string) (net.Conn, error) = func(s *Server, network string, laddr, raddr string) (net.Conn, error) {
 	var la, ra *net.UDPAddr
 	if laddr != "" {
 		var err error
@@ -43,7 +78,7 @@ var DialUDP func(network string, laddr, raddr string) (net.Conn, error) = func(n
 			return nil, err
 		}
 	}
-	a, err := Resolve(network, raddr)
+	a, err := Resolve(s, network, raddr)
 	if err != nil {
 		return nil, err
 	}

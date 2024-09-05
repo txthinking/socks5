@@ -17,6 +17,11 @@ func ExampleServer() {
 		log.Println(err)
 		return
 	}
+	s.Resolver, err = socks5.NewResolver()
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	// You can pass in custom Handler
 	s.ListenAndServe(nil)
 	// #Output:

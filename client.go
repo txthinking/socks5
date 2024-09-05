@@ -98,7 +98,7 @@ func (c *Client) DialWithLocalAddr(network, src, dst string, remoteAddr net.Addr
 		if err != nil {
 			return nil, err
 		}
-		c.UDPConn, err = DialUDP("udp", src, rp.Address())
+		c.UDPConn, err = DialUDP(nil, "udp", src, rp.Address())
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +199,7 @@ func (c *Client) Negotiate(laddr net.Addr) error {
 		src = laddr.String()
 	}
 	var err error
-	c.TCPConn, err = DialTCP("tcp", src, c.Server)
+	c.TCPConn, err = DialTCP(nil, "tcp", src, c.Server)
 	if err != nil {
 		return err
 	}
