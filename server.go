@@ -39,6 +39,8 @@ type Server struct {
 	RunnerGroup       *runnergroup.RunnerGroup
 	// RFC: [UDP ASSOCIATE] The server MAY use this information to limit access to the association. Default false, no limit.
 	LimitUDP bool
+	// Custom Dialer
+	Dial func(network, addr string) (net.Conn, error)
 }
 
 // UDPExchange used to store client address and remote connection
@@ -262,7 +264,7 @@ type DefaultHandle struct {
 // TCPHandle auto handle request. You may prefer to do yourself.
 func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 	if r.Cmd == CmdConnect {
-		rc, err := r.Connect(c)
+		rc, err := r.Connect(s, c)
 		if err != nil {
 			return err
 		}
@@ -362,12 +364,12 @@ func (h *DefaultHandle) UDPHandle(s *Server, addr *net.UDPAddr, d *Datagram) err
 	if ok {
 		laddr = any.(string)
 	}
-	rc, err := DialUDP("udp", laddr, dst)
+	rc, err := DialUDP(s, "udp", laddr, dst)
 	if err != nil {
 		if !strings.Contains(err.Error(), "address already in use") && !strings.Contains(err.Error(), "can't assign requested address") {
 			return err
 		}
-		rc, err = DialUDP("udp", "", dst)
+		rc, err = DialUDP(s, "udp", "", dst)
 		if err != nil {
 			return err
 		}

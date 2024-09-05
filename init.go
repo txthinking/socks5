@@ -17,7 +17,10 @@ var Resolve func(network string, addr string) (net.Addr, error) = func(network s
 	return net.ResolveUDPAddr("udp", addr)
 }
 
-var DialTCP func(network string, laddr, raddr string) (net.Conn, error) = func(network string, laddr, raddr string) (net.Conn, error) {
+var DialTCP func(s *Server, network string, laddr, raddr string) (net.Conn, error) = func(s *Server, network string, laddr, raddr string) (net.Conn, error) {
+	if s != nil && s.Dial != nil {
+		return s.Dial(network, raddr)
+	}
 	var la, ra *net.TCPAddr
 	if laddr != "" {
 		var err error
@@ -34,7 +37,11 @@ var DialTCP func(network string, laddr, raddr string) (net.Conn, error) = func(n
 	return net.DialTCP(network, la, ra)
 }
 
-var DialUDP func(network string, laddr, raddr string) (net.Conn, error) = func(network string, laddr, raddr string) (net.Conn, error) {
+var DialUDP func(s *Server, network string, laddr, raddr string) (net.Conn, error) = func(s *Server, network string, laddr, raddr string) (net.Conn, error) {
+	if s != nil && s.Dial != nil {
+		return s.Dial(network, raddr)
+	}
+
 	var la, ra *net.UDPAddr
 	if laddr != "" {
 		var err error

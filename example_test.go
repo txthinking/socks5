@@ -17,6 +17,11 @@ func ExampleServer() {
 		log.Println(err)
 		return
 	}
+	s.Dial = func(network, addr string) (net.Conn, error) {
+		// custom dialer such wiresocks or ...
+		return net.Dial(network, addr)
+	}
+
 	// You can pass in custom Handler
 	s.ListenAndServe(nil)
 	// #Output:
