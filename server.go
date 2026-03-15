@@ -273,7 +273,7 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		}
 		defer rc.Close()
 		go func() {
-			var bf [1024 * 2]byte
+			var bf [1024 * 16]byte
 			for {
 				if s.TCPTimeout != 0 {
 					if err := rc.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
@@ -284,12 +284,28 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 				if err != nil {
 					return
 				}
-				if _, err := c.Write(bf[0:i]); err != nil {
+				// if _, err := c.Write(bf[0:i]); err != nil {
+				// 	return
+				// }
+				//--------------------------
+				n, err := c.Write(bf[0:i])
+				if err != nil {
 					return
 				}
+				if n < i {
+					// 处理未完全写入的情况
+					for n < i {
+						m, err := c.Write(bf[n:i])
+						if err != nil {
+							return
+						}
+						n += m
+					}
+				}
+				//--------------------------
 			}
 		}()
-		var bf [1024 * 2]byte
+		var bf [1024 * 16]byte
 		for {
 			if s.TCPTimeout != 0 {
 				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
@@ -300,9 +316,25 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 			if err != nil {
 				return nil
 			}
-			if _, err := rc.Write(bf[0:i]); err != nil {
-				return nil
+			// if _, err := rc.Write(bf[0:i]); err != nil {
+			// 	return nil
+			// }
+			//--------------------------
+			n, err := rc.Write(bf[0:i])
+			if err != nil {
+				return err
 			}
+			if n < i {
+				// 处理未完全写入的情况
+				for n < i {
+					m, err := rc.Write(bf[n:i])
+					if err != nil {
+						return err
+					}
+					n += m
+				}
+			}
+			//--------------------------
 		}
 		return nil
 	}
