@@ -18,7 +18,7 @@ Goals: KISS, less is more, small API, code is like the original protocol.
 ### Install
 
 ```
-$ go get github.com/txthinking/socks5
+$ go get github.com/txthinking/txthinkingsocks5
 ```
 
 ### Struct is like concept in protocol

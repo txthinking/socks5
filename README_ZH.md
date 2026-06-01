@@ -17,7 +17,7 @@ SOCKS Protocol Version 5 Library.
 
 ### 获取
 ```
-$ go get github.com/txthinking/socks5
+$ go get github.com/txthinking/txthinkingsocks5
 ```
 
 ### Struct的概念 对标 原始协议里的概念

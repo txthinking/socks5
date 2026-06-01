@@ -1,4 +1,4 @@
-package socks5
+package txthinkingsocks5
 
 import (
 	"errors"
@@ -23,20 +23,20 @@ var (
 
 // Server is socks5 server wrapper
 type Server struct {
-	UserName          string
-	Password          string
-	Method            byte
-	SupportedCommands []byte
-	Addr              string
-	ServerAddr        net.Addr
-	UDPConn           *net.UDPConn
-	UDPExchanges      *cache.Cache
-	TCPTimeout        int
-	UDPTimeout        int
-	Handle            Handler
-	AssociatedUDP     *cache.Cache
-	UDPSrc            *cache.Cache
-	RunnerGroup       *runnergroup.RunnerGroup
+	MethodUsernamePasswordEnabled bool
+	Accounts                      map[string]string
+	Method                        byte
+	SupportedCommands             []byte
+	Addr                          string
+	ServerAddr                    net.Addr
+	UDPConn                       *net.UDPConn
+	UDPExchanges                  *cache.Cache
+	TCPTimeout                    int
+	UDPTimeout                    int
+	Handle                        Handler
+	AssociatedUDP                 *cache.Cache
+	UDPSrc                        *cache.Cache
+	RunnerGroup                   *runnergroup.RunnerGroup
 	// RFC: [UDP ASSOCIATE] The server MAY use this information to limit access to the association. Default false, no limit.
 	LimitUDP bool
 }
@@ -48,7 +48,7 @@ type UDPExchange struct {
 }
 
 // NewClassicServer return a server which allow none method
-func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeout int) (*Server, error) {
+func NewClassicServer(addr, ip string, accounts map[string]string, tcpTimeout, udpTimeout int) (*Server, error) {
 	_, p, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -58,25 +58,29 @@ func NewClassicServer(addr, ip, username, password string, tcpTimeout, udpTimeou
 		return nil, err
 	}
 	m := MethodNone
-	if username != "" && password != "" {
+	var methodUsernamePasswordEnabled = false
+	if len(accounts) > 0 {
 		m = MethodUsernamePassword
+		methodUsernamePasswordEnabled = true
+
 	}
 	cs := cache.New(cache.NoExpiration, cache.NoExpiration)
 	cs1 := cache.New(cache.NoExpiration, cache.NoExpiration)
 	cs2 := cache.New(cache.NoExpiration, cache.NoExpiration)
+
 	s := &Server{
-		Method:            m,
-		UserName:          username,
-		Password:          password,
-		SupportedCommands: []byte{CmdConnect, CmdUDP},
-		Addr:              addr,
-		ServerAddr:        saddr,
-		UDPExchanges:      cs,
-		TCPTimeout:        tcpTimeout,
-		UDPTimeout:        udpTimeout,
-		AssociatedUDP:     cs1,
-		UDPSrc:            cs2,
-		RunnerGroup:       runnergroup.New(),
+		Method:                        m,
+		Accounts:                      accounts,
+		MethodUsernamePasswordEnabled: methodUsernamePasswordEnabled,
+		SupportedCommands:             []byte{CmdConnect, CmdUDP},
+		Addr:                          addr,
+		ServerAddr:                    saddr,
+		UDPExchanges:                  cs,
+		TCPTimeout:                    tcpTimeout,
+		UDPTimeout:                    udpTimeout,
+		AssociatedUDP:                 cs1,
+		UDPSrc:                        cs2,
+		RunnerGroup:                   runnergroup.New(),
 	}
 	return s, nil
 }
@@ -107,12 +111,13 @@ func (s *Server) Negotiate(rw io.ReadWriter) error {
 		return err
 	}
 
-	if s.Method == MethodUsernamePassword {
+	if s.MethodUsernamePasswordEnabled {
 		urq, err := NewUserPassNegotiationRequestFrom(rw)
 		if err != nil {
 			return err
 		}
-		if string(urq.Uname) != s.UserName || string(urq.Passwd) != s.Password {
+		v, exist := s.Accounts[string(urq.Uname)]
+		if !exist || string(urq.Passwd) != v {
 			urp := NewUserPassNegotiationReply(UserPassStatusFailure)
 			if _, err := urp.WriteTo(rw); err != nil {
 				return err
@@ -268,7 +273,7 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 		}
 		defer rc.Close()
 		go func() {
-			var bf [1024 * 2]byte
+			var bf [1024 * 16]byte
 			for {
 				if s.TCPTimeout != 0 {
 					if err := rc.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
@@ -279,12 +284,28 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 				if err != nil {
 					return
 				}
-				if _, err := c.Write(bf[0:i]); err != nil {
+				// if _, err := c.Write(bf[0:i]); err != nil {
+				// 	return
+				// }
+				//--------------------------
+				n, err := c.Write(bf[0:i])
+				if err != nil {
 					return
 				}
+				if n < i {
+					// 处理未完全写入的情况
+					for n < i {
+						m, err := c.Write(bf[n:i])
+						if err != nil {
+							return
+						}
+						n += m
+					}
+				}
+				//--------------------------
 			}
 		}()
-		var bf [1024 * 2]byte
+		var bf [1024 * 16]byte
 		for {
 			if s.TCPTimeout != 0 {
 				if err := c.SetDeadline(time.Now().Add(time.Duration(s.TCPTimeout) * time.Second)); err != nil {
@@ -295,9 +316,25 @@ func (h *DefaultHandle) TCPHandle(s *Server, c *net.TCPConn, r *Request) error {
 			if err != nil {
 				return nil
 			}
-			if _, err := rc.Write(bf[0:i]); err != nil {
-				return nil
+			// if _, err := rc.Write(bf[0:i]); err != nil {
+			// 	return nil
+			// }
+			//--------------------------
+			n, err := rc.Write(bf[0:i])
+			if err != nil {
+				return err
 			}
+			if n < i {
+				// 处理未完全写入的情况
+				for n < i {
+					m, err := rc.Write(bf[n:i])
+					if err != nil {
+						return err
+					}
+					n += m
+				}
+			}
+			//--------------------------
 		}
 		return nil
 	}

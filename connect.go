@@ -1,4 +1,4 @@
-package socks5
+package txthinkingsocks5
 
 import (
 	"io"

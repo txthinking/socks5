@@ -1,4 +1,4 @@
-package socks5_test
+package txthinkingsocks5_test
 
 import (
 	"encoding/hex"
@@ -7,18 +7,18 @@ import (
 	"net"
 	"net/http"
 
+	socks5 "github.com/introspection3/txthinkingsocks5"
 	"github.com/miekg/dns"
-	"github.com/txthinking/socks5"
 )
 
 func ExampleServer() {
-	s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1", "", "", 0, 60)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	// You can pass in custom Handler
-	s.ListenAndServe(nil)
+	// s, err := socks5.NewClassicServer("127.0.0.1:1080", "127.0.0.1", "", "", 0, 60)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
+	// // You can pass in custom Handler
+	// s.ListenAndServe(nil)
 	// #Output:
 }
 

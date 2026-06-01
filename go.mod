@@ -1,6 +1,6 @@
-module github.com/txthinking/socks5
+module github.com/introspection3/txthinkingsocks5
 
-go 1.16
+go 1.25
 
 require (
 	github.com/miekg/dns v1.1.51
