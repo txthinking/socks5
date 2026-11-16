@@ -101,6 +101,7 @@ func (s *Server) Negotiate(rw io.ReadWriter) error {
 		if _, err := rp.WriteTo(rw); err != nil {
 			return err
 		}
+		return errors.New("Unsupport method")
 	}
 	rp := NewNegotiationReply(s.Method)
 	if _, err := rp.WriteTo(rw); err != nil {
